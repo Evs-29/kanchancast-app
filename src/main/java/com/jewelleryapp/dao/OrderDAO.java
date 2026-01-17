@@ -129,20 +129,38 @@ public class OrderDAO {
     }
 
     // ---------- ASSIGN EMPLOYEE TO STAGE ----------
+    /**
+     * Assigns (or re-assigns) an employee to a specific stage for an order.
+     * Creates the stage record if it doesn't already exist.
+     */
     public boolean assignEmployeeToStage(int orderId, String stageName, int employeeId) {
-        String sql = "UPDATE order_stages SET employee_id = ? WHERE order_id = ? AND stage_name = ?";
+        String sql = """
+        INSERT INTO order_stages (order_id, stage_name, employee_id, completed)
+        VALUES (?, ?, ?, 0)
+        ON CONFLICT(order_id, stage_name)
+        DO UPDATE SET employee_id = excluded.employee_id
+    """;
+
         try (Connection c = DatabaseConnection.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
 
-            ps.setInt(1, employeeId);
-            ps.setInt(2, orderId);
-            ps.setString(3, stageName);
-            return ps.executeUpdate() > 0;
+            ps.setInt(1, orderId);
+            ps.setString(2, stageName);
+            ps.setInt(3, employeeId);
+            int rows = ps.executeUpdate();
 
+            if (rows > 0) {
+                System.out.println("✅ Assigned employee " + employeeId +
+                        " to stage '" + stageName + "' for order " + orderId);
+                return true;
+            } else {
+                System.out.println("⚠️ No rows updated for order " + orderId + " stage " + stageName);
+            }
         } catch (SQLException e) {
-            System.err.println("❌ assignEmployeeToStage: " + e.getMessage());
-            return false;
+            System.err.println("❌ assignEmployeeToStage error: " + e.getMessage());
+            e.printStackTrace();
         }
+        return false;
     }
 
     // ---------- MARK STAGE COMPLETION ----------
@@ -296,5 +314,96 @@ public class OrderDAO {
             e.printStackTrace();
         }
         return assigned;
+    }
+    // Returns count of orders per product (for PieChart)
+    public Map<String, Integer> getProductSalesCount() {
+        Map<String, Integer> data = new HashMap<>();
+        String sql = "SELECT p.name, COUNT(o.order_id) AS count FROM orders o JOIN products p ON o.product_id = p.product_id GROUP BY p.name";
+        try (Connection c = DatabaseConnection.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                data.put(rs.getString("name"), rs.getInt("count"));
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ getProductSalesCount: " + e.getMessage());
+        }
+        return data;
+    }
+
+    // Returns number of orders per customer (for BarChart)
+    public Map<String, Integer> getOrdersPerCustomer() {
+        Map<String, Integer> data = new HashMap<>();
+        String sql = "SELECT u.user_name, COUNT(o.order_id) AS count FROM orders o JOIN users u ON o.user_id = u.user_id GROUP BY u.user_name";
+        try (Connection c = DatabaseConnection.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                data.put(rs.getString("user_name"), rs.getInt("count"));
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ getOrdersPerCustomer: " + e.getMessage());
+        }
+        return data;
+    }
+    // ✅ Mark a specific stage as completed (sets completed = 1)
+    public boolean markStageAsCompleted(int orderId, String stageName) {
+        String sql = "UPDATE order_stages SET completed = 1 WHERE order_id = ? AND stage_name = ?";
+        try (Connection c = DatabaseConnection.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, orderId);
+            ps.setString(2, stageName);
+            int rows = ps.executeUpdate();
+            if (rows > 0) {
+                System.out.println("✅ Stage " + stageName + " for Order #" + orderId + " marked completed.");
+                return true;
+            } else {
+                System.out.println("⚠️ No matching stage found to mark completed.");
+                return false;
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ markStageAsCompleted error: " + e.getMessage());
+            return false;
+        }
+    }
+
+    public boolean markStageAsIncomplete(int orderId, String stageName) {
+        String sql = "UPDATE order_stages SET completed = 0 WHERE order_id = ? AND stage_name = ?";
+        try (Connection c = DatabaseConnection.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setInt(1, orderId);
+            ps.setString(2, stageName);
+            int rows = ps.executeUpdate();
+            if (rows > 0) {
+                System.out.println("✅ Stage " + stageName + " for Order #" + orderId + " marked incomplete.");
+                return true;
+            } else {
+                System.out.println("⚠️ No matching stage found to mark incomplete.");
+                return false;
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ markStageAsIncomplete error: " + e.getMessage());
+            return false;
+        }
+    }
+    public Map<String, Integer> getAssignedEmployeeIdsForOrder(int orderId) {
+        Map<String, Integer> map = new HashMap<>();
+        String sql = "SELECT stage_name, employee_id FROM order_stages WHERE order_id = ?";
+
+        try (Connection c = DatabaseConnection.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+
+            ps.setInt(1, orderId);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    map.put(rs.getString("stage_name"), rs.getInt("employee_id"));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("⚠️ getAssignedEmployeeIdsForOrder: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        return map;
     }
 }

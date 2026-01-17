@@ -205,3 +205,91 @@
   -fx-padding: 10 14;
   -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 14, 0, 0, 4);
 }
+/* ========== LOGIN PAGE STYLES ========== */
+
+/* Background */
+.root {
+    -fx-background-color: linear-gradient(to bottom right, #EAF4FF, #FFFFFF);
+    -fx-font-family: "Segoe UI", "Verdana", sans-serif;
+}
+
+/* Login Box */
+.login-box {
+    -fx-background-color: white;
+    -fx-background-radius: 15;
+    -fx-padding: 30;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 20, 0, 0, 5);
+}
+
+/* Title */
+.label-title {
+    -fx-font-size: 28px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2A2A2A;
+}
+
+/* Subtitle */
+.label-subtitle {
+    -fx-font-size: 15px;
+    -fx-text-fill: #777;
+}
+
+/* Labels for text fields */
+.label {
+    -fx-font-size: 14px;
+    -fx-text-fill: #444;
+}
+
+/* Text fields */
+.text-field, .password-field {
+    -fx-pref-width: 220px;
+    -fx-pref-height: 32px;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-background-color: #F8FAFF;
+    -fx-border-color: #D0D8E8;
+    -fx-border-width: 1;
+    -fx-font-size: 13px;
+    -fx-padding: 5 10;
+    -fx-text-fill: #333;
+}
+
+/* Glow effect when focused */
+.text-field:focused, .password-field:focused {
+    -fx-border-color: #0078D7;
+    -fx-background-color: white;
+    -fx-effect: dropshadow(gaussian, rgba(0,120,215,0.2), 10, 0, 0, 0);
+}
+
+/* Login button */
+.button {
+    -fx-background-color: linear-gradient(to right, #0078D7, #0096FF);
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-background-radius: 10;
+    -fx-pref-width: 180;
+    -fx-pref-height: 35;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.25), 5, 0, 0, 3);
+}
+
+/* Hover effect */
+.button:hover {
+    -fx-background-color: linear-gradient(to right, #005FA3, #0078D7);
+}
+
+/* Footer */
+.footer-label {
+    -fx-font-size: 11px;
+    -fx-text-fill: #999;
+}
+.chart-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #333333;
+}
+.chart-pie-label {
+    -fx-font-size: 12px;
+    -fx-fill: #444444;
+}

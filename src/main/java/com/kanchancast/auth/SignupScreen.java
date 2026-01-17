@@ -2,101 +2,124 @@ package com.kanchancast.auth;
 
 import com.jewelleryapp.dao.UserDAO;
 import com.kanchancast.model.User;
+import com.kanchancast.nav.ScreenRouter;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 
-import java.util.Optional;
-
 public class SignupScreen {
-    private static final UserDAO userDAO = new UserDAO();
 
     public static void show(Stage stage) {
-        System.out.println("SignupScreen.show()"); // marker
+        // ---------- TITLE ----------
+        Label title = new Label("💎 Create Your Kanchan Cast Account 💎");
+        title.setFont(Font.font("Verdana", FontWeight.BOLD, 24));
+        title.setTextFill(Color.web("#b8860b"));
 
-        Label title = new Label("Create Customer Account");
-        title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+        Label subtitle = new Label("Please fill in your details to register as a Customer");
+        subtitle.setFont(Font.font("Arial", 15));
+        subtitle.setTextFill(Color.web("#555"));
 
-        TextField username = new TextField();
-        username.setPromptText("Username");
+        // ---------- FIELDS ----------
+        Label lblName = new Label("Full Name:");
+        TextField tfName = new TextField();
+        tfName.setPromptText("Enter your name");
+        tfName.setMaxWidth(280);
 
-        PasswordField pw1 = new PasswordField();
-        pw1.setPromptText("Password");
+        Label lblPass = new Label("Password:");
+        PasswordField tfPass = new PasswordField();
+        tfPass.setPromptText("Enter password");
+        tfPass.setMaxWidth(280);
 
-        PasswordField pw2 = new PasswordField();
-        pw2.setPromptText("Confirm Password");
+        Label lblGender = new Label("Gender:");
+        ComboBox<String> cbGender = new ComboBox<>();
+        cbGender.getItems().addAll("Male", "Female", "Other");
+        cbGender.setPromptText("Select Gender");
+        cbGender.setMaxWidth(280);
 
-        TextField address = new TextField();
-        address.setPromptText("Address (optional)");
+        Label lblAddress = new Label("Address:");
+        TextField tfAddress = new TextField();
+        tfAddress.setPromptText("Enter your address");
+        tfAddress.setMaxWidth(280);
 
-        ComboBox<String> gender = new ComboBox<>();
-        gender.getItems().addAll("Male","Female","Other");
-        gender.setPromptText("Gender (optional)");
+        Button btnSignup = new Button("Create Account");
+        btnSignup.setStyle("-fx-background-color: #b8860b; -fx-text-fill: white; -fx-font-size: 15px;");
+        btnSignup.setPrefWidth(280);
 
-        Button createBtn = new Button("Create");
-        createBtn.setStyle("-fx-background-color:#2d7; -fx-text-fill:white; -fx-font-weight:bold;");
+        Button btnBack = new Button("Back to Login");
+        btnBack.setStyle("-fx-background-color: transparent; -fx-border-color: #b8860b; -fx-text-fill: #b8860b;");
+        btnBack.setPrefWidth(280);
 
-        Button backBtn = new Button("Back to Login");
-        backBtn.setStyle("-fx-background-color:#eee; -fx-text-fill:#333;");
+        // ---------- ACTIONS ----------
+        btnSignup.setOnAction(e -> {
+            String name = tfName.getText().trim();
+            String password = tfPass.getText().trim();
+            String gender = cbGender.getValue();
+            String address = tfAddress.getText().trim();
 
-        Label msg = new Label();
-        msg.setStyle("-fx-text-fill:#b00;");
-
-        HBox actions = new HBox(10, createBtn, backBtn);
-        actions.setAlignment(Pos.CENTER_LEFT);
-
-        VBox form = new VBox(10, title, username, pw1, pw2, address, gender, actions, msg);
-        form.setPadding(new Insets(20));
-        form.setStyle("-fx-background-color:white; -fx-border-color:#ddd; -fx-border-radius:12; -fx-background-radius:12;");
-
-        BorderPane root = new BorderPane(form);
-        BorderPane.setMargin(form, new Insets(30));
-        root.setStyle("-fx-background-color: linear-gradient(#f7f7f7,#ececec);");
-
-        Scene scene = new Scene(root, 560, 420);
-        stage.setScene(scene);
-        stage.setTitle("Kanchan Cast — Sign up");
-        stage.show();
-
-        createBtn.setOnAction(e -> {
-            msg.setText("");
-            String u = username.getText() == null ? "" : username.getText().trim();
-            String p1 = pw1.getText() == null ? "" : pw1.getText();
-            String p2 = pw2.getText() == null ? "" : pw2.getText();
-            String addr = address.getText();
-            String gen = gender.getValue();
-
-            if (u.isEmpty() || p1.isEmpty() || p2.isEmpty()) {
-                msg.setText("Username and both passwords are required.");
-                return;
-            }
-            if (!p1.equals(p2)) {
-                msg.setText("Passwords do not match.");
+            if (name.isEmpty() || password.isEmpty() || gender == null || address.isEmpty()) {
+                showAlert("Error", "Please fill in all fields.");
                 return;
             }
 
-            try {
-                Optional<User> created = userDAO.createCustomerReturn(u, p1, addr, gen);
-                if (created.isEmpty()) {
-                    msg.setText("Could not create account. Change username or try a stronger password.");
-                } else {
-                    User nu = created.get();
-                    Alert ok = new Alert(Alert.AlertType.INFORMATION);
-                    ok.setTitle("Account created");
-                    ok.setHeaderText("Customer created!");
-                    ok.setContentText("Your User Code is:\n\n" + nu.getUserCode() + "\n\nSave it to log in.");
-                    ok.showAndWait();
-                    LoginScreen.show(stage);
-                }
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                msg.setText("Error creating account. See console.");
+            // Create customer user
+            UserDAO dao = new UserDAO();
+            String userCode = dao.generateUserCode("C"); // e.g. C123456
+            User user = new User();
+            user.setUserName(name);
+            user.setPassword(password);
+            user.setUserType("customer");
+            user.setGender(gender);
+            user.setAddress(address);
+            user.setUserCode(userCode);
+
+            boolean created = dao.insertUser(user);
+
+            if (created) {
+                showAlert("✅ Account Created Successfully",
+                        "Your account has been created!\n\nYour User Code is: " + userCode + "\n\nPlease use it to log in.");
+                ScreenRouter.goToLogin(stage);
+            } else {
+                showAlert("⚠️ Error", "Failed to create account. Try again later.");
             }
         });
 
-        backBtn.setOnAction(e -> LoginScreen.show(stage));
+        btnBack.setOnAction(e -> ScreenRouter.goToLogin(stage));
+
+        // ---------- LAYOUT ----------
+        VBox form = new VBox(12,
+                title, subtitle,
+                lblName, tfName,
+                lblPass, tfPass,
+                lblGender, cbGender,
+                lblAddress, tfAddress,
+                btnSignup, btnBack);
+
+        form.setPadding(new Insets(30));
+        form.setAlignment(Pos.CENTER);
+        form.setStyle("-fx-background-color: rgba(255,255,255,0.95); -fx-background-radius: 20; "
+                + "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 15, 0, 0, 5);");
+
+        StackPane root = new StackPane(form);
+        root.setStyle("-fx-background-color: linear-gradient(to bottom right, #fff8dc, #f5deb3);");
+        StackPane.setAlignment(form, Pos.CENTER);
+
+        Scene scene = new Scene(root, 900, 600);
+        stage.setScene(scene);
+        stage.setTitle("Kanchan Cast — Sign Up");
+        stage.show();
+    }
+
+    private static void showAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 }

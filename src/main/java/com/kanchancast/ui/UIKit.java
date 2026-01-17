@@ -9,7 +9,7 @@ public final class UIKit {
     /** Apply global stylesheet safely */
     public static void apply(Scene scene) {
         if (scene == null) return;
-        var url = UIKit.class.getResource("/styles.css");
+        var url = UIKit.class.getResource("/com/kanchancast/ui/styles.css");
         if (url != null && !scene.getStylesheets().contains(url.toExternalForm())) {
             scene.getStylesheets().add(url.toExternalForm());
         }

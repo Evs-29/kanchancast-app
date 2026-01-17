@@ -1,5 +1,10 @@
 package com.kanchancast.model;
 
+/**
+ * Represents an employee (staff) record for Admin and Owner dashboards.
+ * Includes basic profile info, work area, and performance stats.
+ * Compatible with AdminTabs and analytics charts.
+ */
 public class StaffRow {
 
     private int userId;
@@ -13,7 +18,8 @@ public class StaffRow {
     // --- Constructors ---
     public StaffRow() {}
 
-    public StaffRow(int userId, String userName, String workArea, String gender, String address, int age, int ordersDone) {
+    public StaffRow(int userId, String userName, String workArea,
+                    String gender, String address, int age, int ordersDone) {
         this.userId = userId;
         this.userName = userName;
         this.workArea = workArea;
@@ -80,8 +86,16 @@ public class StaffRow {
         this.ordersDone = ordersDone;
     }
 
+    /**
+     * Returns the staff member’s role or position for UI display.
+     * In this system, workArea doubles as the "Role" field.
+     */
+    public String getRole() {
+        return (workArea != null && !workArea.isBlank()) ? workArea : "Employee";
+    }
+
     @Override
     public String toString() {
-        return userName + " (" + workArea + ")";
+        return userName + " (" + getRole() + ")";
     }
 }

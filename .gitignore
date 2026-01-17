@@ -1,0 +1,14 @@
+# Maven / Java build output
+target/
+
+# SQLite database
+*.db
+*.db-journal
+
+# IDE files
+.idea/
+*.iml
+
+# OS junk
+.DS_Store
+

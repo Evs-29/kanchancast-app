@@ -1,106 +1,110 @@
 package com.kanchancast.auth;
 
 import com.jewelleryapp.dao.UserDAO;
-import com.kanchancast.dashboard.AdminDashboard;
-import com.kanchancast.dashboard.CustomerDashboard;
-import com.kanchancast.dashboard.EmployeeDashboard;
-import com.kanchancast.dashboard.OwnerDashboard;
 import com.kanchancast.model.User;
+import com.kanchancast.nav.ScreenRouter;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 
 import java.util.Optional;
 
 public class LoginScreen {
 
-    private static final UserDAO userDAO = new UserDAO();
-
     public static void show(Stage stage) {
-        System.out.println("LoginScreen.show()"); // marker
+        // ---------- TITLE ----------
+        Label title = new Label("💎 Welcome to Kanchan Cast 💎");
+        title.setFont(Font.font("Verdana", FontWeight.BOLD, 28));
+        title.setTextFill(Color.web("#b8860b"));
 
-        Label title = new Label("Kanchan Cast – Login");
-        title.setStyle("-fx-font-size: 20px; -fx-font-weight: bold;");
+        Label subtitle = new Label("Please sign in with your credentials");
+        subtitle.setFont(Font.font("Arial", 16));
+        subtitle.setTextFill(Color.web("#555"));
 
-        TextField code = new TextField();
-        code.setPromptText("User Code (KC-..., optional)");
+        // ---------- FIELDS ----------
+        Label lblUserCode = new Label("User Code:");
+        TextField tfUserCode = new TextField();
+        tfUserCode.setPromptText("Enter your unique User Code");
+        tfUserCode.setMaxWidth(250);
 
-        TextField username = new TextField();
-        username.setPromptText("Username");
+        Label lblUsername = new Label("Username:");
+        TextField tfUsername = new TextField();
+        tfUsername.setPromptText("Enter your username");
+        tfUsername.setMaxWidth(250);
 
-        PasswordField password = new PasswordField();
-        password.setPromptText("Password");
+        Label lblPass = new Label("Password:");
+        PasswordField tfPass = new PasswordField();
+        tfPass.setPromptText("Enter password");
+        tfPass.setMaxWidth(250);
 
-        Button loginBtn = new Button("Log in");
-        loginBtn.setDefaultButton(true);
-        // Force visible style no matter what CSS does:
-        loginBtn.setStyle("-fx-background-color: #2d7; -fx-text-fill: white; -fx-font-weight: bold;");
+        // ---------- BUTTONS ----------
+        Button btnLogin = new Button("Login");
+        btnLogin.setDefaultButton(true);
+        btnLogin.setPrefWidth(250);
+        btnLogin.setStyle("-fx-background-color: #b8860b; -fx-text-fill: white; -fx-font-size: 15px;");
 
-        Button signupBtn = new Button("Sign up");
-        signupBtn.setStyle("-fx-background-color: #eee; -fx-text-fill: #333;");
+        Button btnSignup = new Button("Create Account");
+        btnSignup.setPrefWidth(250);
+        btnSignup.setStyle("-fx-background-color: transparent; -fx-border-color: #b8860b; -fx-text-fill: #b8860b;");
 
-        Label message = new Label();
-        message.setStyle("-fx-text-fill: #b00;");
+        // ---------- ACTIONS ----------
+        btnLogin.setOnAction(e -> {
+            String userCode = tfUserCode.getText().trim();
+            String username = tfUsername.getText().trim();
+            String password = tfPass.getText().trim();
 
-        HBox row = new HBox(10, loginBtn, signupBtn);
-        row.setAlignment(Pos.CENTER_LEFT);
-
-        VBox box = new VBox(10, title, code, username, password, row, message);
-        box.setPadding(new Insets(20));
-        box.setAlignment(Pos.CENTER_LEFT);
-        box.setStyle("-fx-background-color: white; -fx-border-color: #ddd; -fx-border-radius: 12; -fx-background-radius: 12;");
-
-        BorderPane root = new BorderPane(box);
-        BorderPane.setMargin(box, new Insets(30));
-        root.setStyle("-fx-background-color: linear-gradient(#f7f7f7,#ececec);");
-
-        Scene scene = new Scene(root, 520, 340);
-        stage.setScene(scene);
-        stage.setTitle("Kanchan Cast — Login");
-        stage.show();
-
-        // Actions
-        loginBtn.setOnAction(e -> {
-            message.setText("");
-            String c  = code.getText() == null ? "" : code.getText().trim();
-            String u  = username.getText() == null ? "" : username.getText().trim();
-            String pw = password.getText() == null ? "" : password.getText();
-
-            if (u.isEmpty() || pw.isEmpty()) {
-                message.setText("Enter username and password (user code optional).");
+            if (userCode.isEmpty() || username.isEmpty() || password.isEmpty()) {
+                showAlert("Error", "Please fill in all fields — User Code, Username, and Password.");
                 return;
             }
 
-            try {
-                Optional<User> maybe = c.isEmpty()
-                        ? userDAO.authenticate(u, pw)
-                        : userDAO.authenticateByCodeAndUsername(c, u, pw);
+            UserDAO dao = new UserDAO();
+            Optional<User> userOpt = dao.authenticateFull(userCode, username, password); // ✅ new method
 
-                if (maybe.isEmpty()) {
-                    message.setText("Invalid credentials.");
-                    System.out.println("[LOGIN FAIL] user=" + u + " code=" + c);
-                    return;
-                }
-
-                User user = maybe.get();
-                System.out.println("[LOGIN OK] id=" + user.getUserId() + " code=" + user.getUserCode() + " type=" + user.getUserType());
-
-                switch (user.getUserType().toLowerCase()) {
-                    case "customer" -> CustomerDashboard.show(stage, user);
-                    case "employee" -> EmployeeDashboard.show(stage, user);
-                    case "admin" -> AdminDashboard.show(stage, user);
-                    case "owner"    -> OwnerDashboard.show(stage, user);
-                    default -> message.setText("Unknown role: " + user.getUserType());
-                }
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                message.setText("Login error. See console.");
+            if (userOpt.isEmpty()) {
+                showAlert("Login Failed", "Invalid credentials. Please try again.");
+            } else {
+                User user = userOpt.get();
+                ScreenRouter.showDashboard(stage, user);
             }
         });
 
-        signupBtn.setOnAction(e -> SignupScreen.show(stage));
+        btnSignup.setOnAction(e -> ScreenRouter.goToSignup(stage));
+
+        // ---------- LAYOUT CARD ----------
+        VBox loginBox = new VBox(12, title, subtitle,
+                lblUserCode, tfUserCode,
+                lblUsername, tfUsername,
+                lblPass, tfPass,
+                btnLogin, btnSignup);
+
+        loginBox.setPadding(new Insets(30));
+        loginBox.setAlignment(Pos.CENTER);
+        loginBox.setStyle("-fx-background-color: rgba(255,255,255,0.95); -fx-background-radius: 20; "
+                + "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 15, 0, 0, 5);");
+
+        // ---------- ROOT BACKGROUND ----------
+        StackPane root = new StackPane(loginBox);
+        root.setStyle("-fx-background-color: linear-gradient(to bottom right, #fff8dc, #f5deb3);");
+        StackPane.setAlignment(loginBox, Pos.CENTER);
+
+        Scene scene = new Scene(root, 900, 600);
+        stage.setScene(scene);
+        stage.setTitle("Kanchan Cast — Login");
+        stage.show();
+    }
+
+    private static void showAlert(String title, String message) {
+        Alert alert = new Alert(Alert.AlertType.WARNING);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
     }
 }

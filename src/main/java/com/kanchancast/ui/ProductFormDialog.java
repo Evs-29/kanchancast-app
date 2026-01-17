@@ -8,7 +8,7 @@ import javafx.scene.layout.GridPane;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
-import java.util.Optional;
+import java.util.List;
 
 public class ProductFormDialog extends Dialog<Boolean> {
 
@@ -26,12 +26,20 @@ public class ProductFormDialog extends Dialog<Boolean> {
         initOwner(owner);
         initModality(Modality.WINDOW_MODAL);
 
-        category.getItems().addAll("ring", "necklace", "bracelet", "earrings", "other");
-        category.setValue("other");
+        // ====== Load categories dynamically ======
+        ProductDAO dao = new ProductDAO();
+        List<String> categories = dao.listAllCategories();
+
+        if (categories.isEmpty()) {
+            categories.addAll(List.of("ring", "necklace", "bracelet", "earrings", "other"));
+        }
+        category.getItems().addAll(categories);
+        category.setValue(categories.get(0));
 
         description.setPromptText("Description (optional)");
         description.setPrefRowCount(3);
 
+        // ====== Form Layout ======
         GridPane gp = new GridPane();
         gp.setHgap(10);
         gp.setVgap(8);
@@ -52,6 +60,7 @@ public class ProductFormDialog extends Dialog<Boolean> {
         ButtonType cancel = new ButtonType("Cancel", ButtonBar.ButtonData.CANCEL_CLOSE);
         getDialogPane().getButtonTypes().addAll(cancel, ok);
 
+        // ====== Validation Logic ======
         Node okBtn = getDialogPane().lookupButton(ok);
         okBtn.addEventFilter(javafx.event.ActionEvent.ANY, ev -> {
             try {
@@ -64,15 +73,26 @@ public class ProductFormDialog extends Dialog<Boolean> {
                 String img = imagePath.getText().trim();
                 String desc = description.getText().trim();
 
-                boolean saved = new ProductDAO().createProduct(n, t, gw, dw, p, img, desc);
+                // --- Validations ---
+                if (n.isEmpty()) {
+                    showError("Product name cannot be empty."); ev.consume(); return;
+                }
+                if (p < 0) {
+                    showError("Price cannot be negative."); ev.consume(); return;
+                }
+
+                boolean saved = dao.createProduct(n, t, gw, dw, p, img, desc);
                 if (!saved) {
-                    new Alert(Alert.AlertType.ERROR, "Could not save product. Check console for details.", ButtonType.OK).showAndWait();
+                    showError("Could not save product. Check console for details.");
                     ev.consume();
                 } else {
                     setResult(Boolean.TRUE);
                 }
+            } catch (NumberFormatException ex) {
+                showError("Please check inputs (price/weights must be numbers).");
+                ev.consume();
             } catch (Exception ex) {
-                new Alert(Alert.AlertType.ERROR, "Please check inputs (price/weights must be numbers).", ButtonType.OK).showAndWait();
+                showError("Unexpected error: " + ex.getMessage());
                 ev.consume();
             }
         });
@@ -81,5 +101,14 @@ public class ProductFormDialog extends Dialog<Boolean> {
     private double parseDoubleSafe(String s) {
         if (s == null || s.isBlank()) return 0.0;
         return Double.parseDouble(s.trim());
+    }
+
+    private void showError(String msg) {
+        new Alert(Alert.AlertType.ERROR, msg, ButtonType.OK).showAndWait();
+    }
+
+    // Convenience static launcher for AdminTabs
+    public static void show(Stage owner) {
+        new ProductFormDialog(owner).showAndWait();
     }
 }

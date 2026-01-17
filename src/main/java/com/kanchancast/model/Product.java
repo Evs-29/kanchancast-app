@@ -56,6 +56,11 @@ public class Product {
     public double getPrice() { return price; }
     public void setPrice(double price) { this.price = price; }
 
+    // ----- optional alias for category -----
+    public String getCategoryName() {
+        return type; // alias for compatibility with dashboards
+    }
+
     // ----- weights (nullable) -----
     public Double getGoldWeight() { return goldWeight; }
     public void setGoldWeight(Double goldWeight) { this.goldWeight = goldWeight; }
