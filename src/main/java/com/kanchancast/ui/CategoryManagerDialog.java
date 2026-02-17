@@ -11,6 +11,7 @@ import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 
 import java.util.List;
 
@@ -47,31 +48,31 @@ public class CategoryManagerDialog {
             String newCat = tfNewCat.getText().trim();
 
             if (newCat.isEmpty()) {
-                showAlert(Alert.AlertType.WARNING, "Validation Error", "Category name cannot be empty.");
+                showAlert(dlg, Alert.AlertType.WARNING, "Validation Error", "Category name cannot be empty.");
                 return;
             }
 
             // ✅ Prevent duplicates
             List<String> existing = productDAO.listAllCategories();
             if (existing.stream().anyMatch(c -> c.equalsIgnoreCase(newCat))) {
-                showAlert(Alert.AlertType.WARNING, "Duplicate Category", "This category already exists.");
+                showAlert(dlg, Alert.AlertType.WARNING, "Duplicate Category", "This category already exists.");
                 return;
             }
 
             boolean ok = productDAO.addCategory(newCat);
             if (ok) {
-                showAlert(Alert.AlertType.INFORMATION, "Success", "Category added successfully!");
+                showAlert(dlg, Alert.AlertType.INFORMATION, "Success", "Category added successfully!");
                 tfNewCat.clear();
                 refreshTable(table, productDAO);
             } else {
-                showAlert(Alert.AlertType.ERROR, "Error", "Could not add category.");
+                showAlert(dlg, Alert.AlertType.ERROR, "Error", "Could not add category.");
             }
         });
 
         btnDelete.setOnAction(e -> {
             String selected = table.getSelectionModel().getSelectedItem();
             if (selected == null) {
-                showAlert(Alert.AlertType.WARNING, "No Selection", "Please select a category to delete.");
+                showAlert(dlg, Alert.AlertType.WARNING, "No Selection", "Please select a category to delete.");
                 return;
             }
 
@@ -80,14 +81,17 @@ public class CategoryManagerDialog {
                     "Are you sure you want to delete the category: " + selected + "?",
                     ButtonType.YES, ButtonType.NO);
             confirm.setHeaderText("Confirm Deletion");
+            confirm.initOwner(dlg); // ✅ Fix: Attached to dialog
+            confirm.initModality(Modality.WINDOW_MODAL);
             confirm.showAndWait().ifPresent(res -> {
                 if (res == ButtonType.YES) {
                     boolean ok = productDAO.deleteCategory(selected);
                     if (ok) {
-                        showAlert(Alert.AlertType.INFORMATION, "Deleted", "Category deleted successfully!");
+                        showAlert(dlg, Alert.AlertType.INFORMATION, "Deleted", "Category deleted successfully!");
                         refreshTable(table, productDAO);
                     } else {
-                        showAlert(Alert.AlertType.ERROR, "Error", "Failed to delete category. Check DB constraints.");
+                        showAlert(dlg, Alert.AlertType.ERROR, "Error",
+                                "Failed to delete category. Check DB constraints.");
                     }
                 }
             });
@@ -123,9 +127,13 @@ public class CategoryManagerDialog {
     }
 
     // Helper: show alert
-    private static void showAlert(Alert.AlertType type, String title, String msg) {
+    private static void showAlert(Window owner, Alert.AlertType type, String title, String msg) {
         Alert a = new Alert(type, msg, ButtonType.OK);
         a.setHeaderText(title);
+        if (owner != null) {
+            a.initOwner(owner);
+            a.initModality(Modality.WINDOW_MODAL);
+        }
         a.showAndWait();
     }
 }

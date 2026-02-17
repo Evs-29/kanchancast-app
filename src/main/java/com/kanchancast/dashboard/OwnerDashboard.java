@@ -13,7 +13,6 @@ import javafx.beans.property.SimpleIntegerProperty;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Scene;
 import javafx.scene.chart.*;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
@@ -210,23 +209,26 @@ public class OwnerDashboard {
         btnDeleteUser.setOnAction(e -> {
             User selected = usersTable.getSelectionModel().getSelectedItem();
             if (selected == null) {
-                new Alert(Alert.AlertType.WARNING, "Select a user first!").showAndWait();
+                PopupUtil.showWarn(stage, "Select a user first!");
                 return;
             }
             if (eqType(selected, "owner")) {
-                new Alert(Alert.AlertType.WARNING, "You cannot delete the Owner account!").showAndWait();
+                PopupUtil.showWarn(stage, "You cannot delete the Owner account!");
                 return;
             }
             boolean deleted = userDAO.deleteUser(selected.getUserId());
-            new Alert(deleted ? Alert.AlertType.INFORMATION : Alert.AlertType.ERROR,
-                    deleted ? "✅ User deleted successfully!" : "⚠️ Failed to delete user!")
-                    .showAndWait();
+            if (deleted) {
+                PopupUtil.showInfo(stage, "✅ User deleted successfully!");
+            } else {
+                PopupUtil.showError(stage, "⚠️ Failed to delete user!");
+            }
             loadUsers.run();
         });
 
         // ✅ UPDATED: create admin -> generate user_code, save it, show popup with code
         btnAddAdmin.setOnAction(e -> {
             Dialog<User> dialog = new Dialog<>();
+            dialog.initOwner(stage); // ✅ FIX: Set owner to keep it on top of the dashboard
             dialog.setTitle("Create New Administrator");
 
             PopupUtil.prepareDialog(stage, dialog);
@@ -271,25 +273,34 @@ public class OwnerDashboard {
 
                     if (username.isEmpty() || password.isEmpty() || address.isEmpty()
                             || gender == null || dob == null || workArea.isEmpty()) {
-                        new Alert(Alert.AlertType.WARNING,
-                                "All fields are required. Please complete Username, Password, Address, Gender, Work Area and Date of Birth.")
-                                .showAndWait();
+                        Alert alert = new Alert(Alert.AlertType.WARNING,
+                                "All fields are required. Please complete Username, Password, Address, Gender, Work Area and Date of Birth.");
+                        alert.initOwner(dialog.getDialogPane().getScene().getWindow());
+                        alert.showAndWait();
                         return null;
                     }
                     if (username.length() < 3) {
-                        new Alert(Alert.AlertType.WARNING, "Username must be at least 3 characters.").showAndWait();
+                        Alert alert = new Alert(Alert.AlertType.WARNING, "Username must be at least 3 characters.");
+                        alert.initOwner(dialog.getDialogPane().getScene().getWindow());
+                        alert.showAndWait();
                         return null;
                     }
                     if (username.contains(" ")) {
-                        new Alert(Alert.AlertType.WARNING, "Username cannot contain spaces.").showAndWait();
+                        Alert alert = new Alert(Alert.AlertType.WARNING, "Username cannot contain spaces.");
+                        alert.initOwner(dialog.getDialogPane().getScene().getWindow());
+                        alert.showAndWait();
                         return null;
                     }
                     if (password.length() < 4) {
-                        new Alert(Alert.AlertType.WARNING, "Password must be at least 4 characters.").showAndWait();
+                        Alert alert = new Alert(Alert.AlertType.WARNING, "Password must be at least 4 characters.");
+                        alert.initOwner(dialog.getDialogPane().getScene().getWindow());
+                        alert.showAndWait();
                         return null;
                     }
                     if (dob.isAfter(LocalDate.now())) {
-                        new Alert(Alert.AlertType.WARNING, "Date of Birth cannot be in the future.").showAndWait();
+                        Alert alert = new Alert(Alert.AlertType.WARNING, "Date of Birth cannot be in the future.");
+                        alert.initOwner(dialog.getDialogPane().getScene().getWindow());
+                        alert.showAndWait();
                         return null;
                     }
 
@@ -307,11 +318,14 @@ public class OwnerDashboard {
                             userCode);
 
                     if (ok) {
-                        new Alert(Alert.AlertType.INFORMATION,
-                                "✅ Admin created successfully!\n\nUser Code: " + userCode)
-                                .showAndWait();
+                        Alert alert = new Alert(Alert.AlertType.INFORMATION,
+                                "✅ Admin created successfully!\n\nUser Code: " + userCode);
+                        alert.initOwner(dialog.getDialogPane().getScene().getWindow());
+                        alert.showAndWait();
                     } else {
-                        new Alert(Alert.AlertType.ERROR, "⚠️ Failed to create admin!").showAndWait();
+                        Alert alert = new Alert(Alert.AlertType.ERROR, "⚠️ Failed to create admin!");
+                        alert.initOwner(dialog.getDialogPane().getScene().getWindow());
+                        alert.showAndWait();
                     }
 
                     loadUsers.run();
@@ -470,8 +484,8 @@ public class OwnerDashboard {
         root.setTop(topBar);
         root.setCenter(content);
 
-        Scene scene = new Scene(root, 1280, 820);
-        stage.setScene(scene);
+        // ✅ FIX: Use replaceSceneContent to preserve full-screen state
+        ScreenRouter.replaceSceneContent(stage, root, 1280, 820);
         stage.setTitle("Kanchan Cast — Owner Dashboard");
         stage.show();
 

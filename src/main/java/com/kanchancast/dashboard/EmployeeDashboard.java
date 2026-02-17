@@ -10,7 +10,6 @@ import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.stage.Stage;
@@ -26,7 +25,8 @@ import java.util.List;
  */
 public final class EmployeeDashboard {
 
-    private EmployeeDashboard() {}
+    private EmployeeDashboard() {
+    }
 
     public static void show(Stage stage, User employee) {
         if (employee == null) {
@@ -84,7 +84,8 @@ public final class EmployeeDashboard {
             }
 
             boolean okConfirm = PopupUtil.confirm(stage, "Confirm Completion", "Mark this stage as completed?");
-            if (!okConfirm) return;
+            if (!okConfirm)
+                return;
 
             boolean ok = orderDAO.markStageAsCompleted(sel.getOrderId(), sel.getStage());
             if (ok) {
@@ -103,7 +104,8 @@ public final class EmployeeDashboard {
             }
 
             boolean okConfirm = PopupUtil.confirm(stage, "Confirm Change", "Mark this stage as not completed?");
-            if (!okConfirm) return;
+            if (!okConfirm)
+                return;
 
             boolean ok = orderDAO.markStageAsIncomplete(sel.getOrderId(), sel.getStage());
             if (ok) {
@@ -117,7 +119,8 @@ public final class EmployeeDashboard {
         // ---- Logout Button Action ----
         logout.setOnAction(e -> {
             boolean okConfirm = PopupUtil.confirm(stage, "Confirm Logout", "Are you sure you want to logout?");
-            if (!okConfirm) return;
+            if (!okConfirm)
+                return;
 
             LoginScreen.show(stage); // Redirect to login
         });
@@ -149,16 +152,16 @@ public final class EmployeeDashboard {
         VBox root = new VBox(10, header, bar, tv);
         root.setPadding(new Insets(10));
         root.setStyle("""
-            -fx-background-color: linear-gradient(to bottom right, #f8f9fa, #dee2e6);
-            -fx-font-family: 'Segoe UI', sans-serif;
-            -fx-font-size: 13px;
-        """);
+                    -fx-background-color: linear-gradient(to bottom right, #f8f9fa, #dee2e6);
+                    -fx-font-family: 'Segoe UI', sans-serif;
+                    -fx-font-size: 13px;
+                """);
 
         // ---- Initial load ----
         reload.run();
 
-        Scene scene = new Scene(root, 1000, 600);
-        stage.setScene(scene);
+        // ✅ FIX: Keep full screen state
+        com.kanchancast.nav.ScreenRouter.replaceSceneContent(stage, root, 1000, 600);
         stage.setTitle("Kanchan Cast — Employee Dashboard");
         stage.show();
     }

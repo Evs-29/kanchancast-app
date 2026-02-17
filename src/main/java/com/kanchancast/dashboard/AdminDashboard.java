@@ -11,7 +11,6 @@ import com.kanchancast.model.User;
 import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Scene;
 import javafx.scene.chart.*;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
@@ -169,7 +168,7 @@ public class AdminDashboard {
             int topN = Math.min(8, sorted.size());
             List<StaffRow> top = sorted.subList(0, topN);
 
-            //top employee (by stages completed)
+            // top employee (by stages completed)
             StaffRow best = top.get(0);
             topEmployeeVal.setText(safeString(best.getUserName(), "N/A") + " (" + best.getOrdersDone() + ")");
 
@@ -260,8 +259,8 @@ public class AdminDashboard {
         root.setTop(topBar);
         root.setCenter(content);
 
-        Scene scene = new Scene(root, 1280, 820);
-        stage.setScene(scene);
+        // ✅ FIX: Keep full screen state
+        com.kanchancast.nav.ScreenRouter.replaceSceneContent(stage, root, 1280, 820);
         stage.setTitle("Kanchan Cast — Admin Dashboard");
         stage.show();
 

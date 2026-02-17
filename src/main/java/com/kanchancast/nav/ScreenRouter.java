@@ -9,6 +9,7 @@ import com.kanchancast.dashboard.OwnerDashboard;
 import com.kanchancast.model.User;
 import javafx.application.Platform;
 import javafx.stage.Stage;
+import javafx.scene.Scene;
 
 /**
  * Central class for navigating between all top-level screens in the app.
@@ -20,22 +21,53 @@ import javafx.stage.Stage;
  */
 public final class ScreenRouter {
 
-    private ScreenRouter() {}
+    private ScreenRouter() {
+    }
 
     // ----------------------------
     // WINDOW STATE PRESERVER
     // ----------------------------
 
+    // ----------------------------
+    // SCENE REPLACEMENT (Full Screen Fix)
+    // ----------------------------
+
+    /**
+     * Replaces the root of the current Scene if it exists, otherwise creates a new
+     * Scene.
+     * This preserves the Window/Stage state (Full Screen, Maximized, Dimensions).
+     */
+    public static void replaceSceneContent(Stage stage, javafx.scene.Parent root, double width, double height) {
+        if (stage == null)
+            return;
+
+        Scene currentScene = stage.getScene();
+        if (currentScene != null) {
+            // ✅ REUSE existing scene to avoid exiting full screen
+            currentScene.setRoot(root);
+        } else {
+            // First time initialization
+            stage.setScene(new Scene(root, width, height));
+        }
+
+        // Ensure title/show is handled if needed, though usually just setting root is
+        // enough
+        if (!stage.isShowing()) {
+            stage.show();
+        }
+    }
+
     private static void navigatePreserveWindow(Stage stage, Runnable navigationAction) {
-        if (stage == null) return;
+        if (stage == null)
+            return;
 
+        // With replaceSceneContent, we don't strictly need the complex logic below,
+        // but we keep it for safety if navigationAction still does setScene()
         final boolean wasFullScreen = stage.isFullScreen();
-        final boolean wasMaximized  = stage.isMaximized();
+        final boolean wasMaximized = stage.isMaximized();
 
-        // Perform navigation (this usually calls stage.setScene(...))
         navigationAction.run();
 
-        // Restore fullscreen/maximized on next pulse (prevents shrinking / new window size)
         Platform.runLater(() -> {
             try {
                 if (wasFullScreen && !stage.isFullScreen()) {
@@ -43,7 +75,8 @@ public final class ScreenRouter {
                 } else if (!wasFullScreen && wasMaximized && !stage.isMaximized()) {
                     stage.setMaximized(true);
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         });
     }
 
@@ -62,8 +95,13 @@ public final class ScreenRouter {
     }
 
     // Legacy aliases (for backward compatibility)
-    public static void showLogin(Stage stage) { goToLogin(stage); }
-    public static void showSignup(Stage stage) { goToSignup(stage); }
+    public static void showLogin(Stage stage) {
+        goToLogin(stage);
+    }
+
+    public static void showSignup(Stage stage) {
+        goToSignup(stage);
+    }
 
     // ----------------------------
     // DASHBOARD ROUTING

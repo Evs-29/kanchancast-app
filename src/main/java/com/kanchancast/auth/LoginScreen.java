@@ -6,7 +6,6 @@ import com.kanchancast.nav.ScreenRouter;
 import com.kanchancast.ui.PopupUtil;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -90,8 +89,7 @@ public class LoginScreen {
         root.setStyle("-fx-background-color: linear-gradient(to bottom right, #fff8dc, #f5deb3);");
         StackPane.setAlignment(loginBox, Pos.CENTER);
 
-        Scene scene = new Scene(root, 900, 600);
-        stage.setScene(scene);
+        ScreenRouter.replaceSceneContent(stage, root, 900, 600);
         stage.setTitle("Kanchan Cast — Login");
         stage.show();
     }
