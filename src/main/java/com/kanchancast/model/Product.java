@@ -4,29 +4,29 @@ import java.util.Objects;
 
 /**
  * Product domain model used by DAOs and dashboards.
- * - price is kept as double (DB stores DECIMAL; DAO converts).
- * - gold/diamond/stone weights are nullable Doubles.
- * - includes description, imagePath, and id with both getId()/setId() and getProductId()/setProductId().
  */
 public class Product {
 
-    // ----- fields -----
-    private int id;                    // maps to products.product_id
-    private String name;               // products.product_name
-    private String type;               // products.product_type (aka category)
-    private double price;              // products.price (DECIMAL in DB)
-    private Double goldWeight;         // products.gold_weight  (nullable)
-    private Double diamondWeight;      // products.diamond_weight (nullable)
-    private Double stoneWeight;        // products.stone_weight (nullable)
+    private int id;                    // products.product_id
+    private String name;               // products.name
+    private String type;               // products.type
+    private double price;              // products.price
+    private Double goldWeight;         // products.karat
+    private Double diamondWeight;      // products.weight
+    private Double stoneWeight;        // ✅ products.stone_weight
     private String imagePath;          // products.image_path
     private String description;        // products.description
 
-    // ----- constructors -----
+    // Duration fields (stored in products table)
+    private int durationAmount;        // products.duration_amount
+    private String durationUnit;       // products.duration_unit (DAYS/WEEKS/MONTHS)
+
     public Product() {}
 
     public Product(int id, String name, String type, double price,
                    Double goldWeight, Double diamondWeight, Double stoneWeight,
-                   String imagePath, String description) {
+                   String imagePath, String description,
+                   int durationAmount, String durationUnit) {
         this.id = id;
         this.name = name;
         this.type = type;
@@ -36,17 +36,16 @@ public class Product {
         this.stoneWeight = stoneWeight;
         this.imagePath = imagePath;
         this.description = description;
+        this.durationAmount = durationAmount;
+        this.durationUnit = durationUnit;
     }
 
-    // ----- id (aliases provided for convenience) -----
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
 
-    // Some parts of the code may call these:
     public int getProductId() { return id; }
     public void setProductId(int id) { this.id = id; }
 
-    // ----- basic props -----
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
@@ -56,12 +55,8 @@ public class Product {
     public double getPrice() { return price; }
     public void setPrice(double price) { this.price = price; }
 
-    // ----- optional alias for category -----
-    public String getCategoryName() {
-        return type; // alias for compatibility with dashboards
-    }
+    public String getCategoryName() { return type; }
 
-    // ----- weights (nullable) -----
     public Double getGoldWeight() { return goldWeight; }
     public void setGoldWeight(Double goldWeight) { this.goldWeight = goldWeight; }
 
@@ -71,14 +66,18 @@ public class Product {
     public Double getStoneWeight() { return stoneWeight; }
     public void setStoneWeight(Double stoneWeight) { this.stoneWeight = stoneWeight; }
 
-    // ----- media / description -----
     public String getImagePath() { return imagePath; }
     public void setImagePath(String imagePath) { this.imagePath = imagePath; }
 
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
 
-    // ----- util -----
+    public int getDurationAmount() { return durationAmount; }
+    public void setDurationAmount(int durationAmount) { this.durationAmount = durationAmount; }
+
+    public String getDurationUnit() { return durationUnit; }
+    public void setDurationUnit(String durationUnit) { this.durationUnit = durationUnit; }
+
     @Override
     public String toString() {
         return "Product{" +
@@ -91,6 +90,8 @@ public class Product {
                 ", stoneWeight=" + stoneWeight +
                 ", imagePath='" + imagePath + '\'' +
                 ", description='" + description + '\'' +
+                ", durationAmount=" + durationAmount +
+                ", durationUnit='" + durationUnit + '\'' +
                 '}';
     }
 

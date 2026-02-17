@@ -9,91 +9,46 @@ public class User {
     private String address;
     private String area;
 
-    // ✅ Newly added fields
     private String gender;
     private int age;
+
+    // ✅ NEW: store DOB in ISO format YYYY-MM-DD
+    private String dob;
+
     private String phone;
-    private String password; // Added for login and DAO use
+    private String password;
 
-    // --- Getters & Setters ---
-    public int getUserId() {
-        return userId;
-    }
+    public int getUserId() { return userId; }
+    public void setUserId(int userId) { this.userId = userId; }
 
-    public void setUserId(int userId) {
-        this.userId = userId;
-    }
+    public String getUserCode() { return userCode; }
+    public void setUserCode(String userCode) { this.userCode = userCode; }
 
-    public String getUserCode() {
-        return userCode;
-    }
+    public String getUserName() { return userName; }
+    public void setUserName(String userName) { this.userName = userName; }
 
-    public void setUserCode(String userCode) {
-        this.userCode = userCode;
-    }
+    public String getUserType() { return userType; }
+    public void setUserType(String userType) { this.userType = userType; }
 
-    public String getUserName() {
-        return userName;
-    }
+    public String getAddress() { return address; }
+    public void setAddress(String address) { this.address = address; }
 
-    public void setUserName(String userName) {
-        this.userName = userName;
-    }
+    public String getArea() { return area; }
+    public void setArea(String area) { this.area = area; }
 
-    public String getUserType() {
-        return userType;
-    }
+    public String getGender() { return gender; }
+    public void setGender(String gender) { this.gender = gender; }
 
-    public void setUserType(String userType) {
-        this.userType = userType;
-    }
+    public int getAge() { return age; }
+    public void setAge(int age) { this.age = age; }
 
-    public String getAddress() {
-        return address;
-    }
+    // ✅ NEW
+    public String getDob() { return dob; }
+    public void setDob(String dob) { this.dob = dob; }
 
-    public void setAddress(String address) {
-        this.address = address;
-    }
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
 
-    public String getArea() {
-        return area;
-    }
-
-    public void setArea(String area) {
-        this.area = area;
-    }
-
-    public String getGender() {
-        return gender;
-    }
-
-    public void setGender(String gender) {
-        this.gender = gender;
-    }
-
-    public int getAge() {
-        return age;
-    }
-
-    public void setAge(int age) {
-        this.age = age;
-    }
-
-    public String getPhone() {
-        return phone;
-    }
-
-    public void setPhone(String phone) {
-        this.phone = phone;
-    }
-
-    // ✅ New methods
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        this.password = password;
-    }
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
 }

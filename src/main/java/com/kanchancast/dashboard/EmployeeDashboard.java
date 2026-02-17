@@ -4,6 +4,7 @@ import com.jewelleryapp.dao.OrderDAO;
 import com.kanchancast.model.AssignedTask;
 import com.kanchancast.model.User;
 import com.kanchancast.auth.LoginScreen;
+import com.kanchancast.ui.PopupUtil;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -29,7 +30,7 @@ public final class EmployeeDashboard {
 
     public static void show(Stage stage, User employee) {
         if (employee == null) {
-            new Alert(Alert.AlertType.ERROR, "No employee data found. Please log in again.").showAndWait();
+            PopupUtil.showError(stage, "No employee data found. Please log in again.");
             return;
         }
 
@@ -78,59 +79,47 @@ public final class EmployeeDashboard {
         markDone.setOnAction(e -> {
             AssignedTask sel = tv.getSelectionModel().getSelectedItem();
             if (sel == null) {
-                new Alert(Alert.AlertType.WARNING, "Please select a task first.").showAndWait();
+                PopupUtil.showWarn(stage, "Please select a task first.");
                 return;
             }
 
-            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                    "Mark this stage as completed?", ButtonType.YES, ButtonType.NO);
-            confirm.setHeaderText("Confirm Completion");
-            confirm.showAndWait().ifPresent(resp -> {
-                if (resp == ButtonType.YES) {
-                    boolean ok = orderDAO.markStageAsCompleted(sel.getOrderId(), sel.getStage());
-                    if (ok) {
-                        new Alert(Alert.AlertType.INFORMATION, "✅ Stage marked as completed!").showAndWait();
-                        reload.run();
-                    } else {
-                        new Alert(Alert.AlertType.ERROR, "⚠️ Could not update stage.").showAndWait();
-                    }
-                }
-            });
+            boolean okConfirm = PopupUtil.confirm(stage, "Confirm Completion", "Mark this stage as completed?");
+            if (!okConfirm) return;
+
+            boolean ok = orderDAO.markStageAsCompleted(sel.getOrderId(), sel.getStage());
+            if (ok) {
+                PopupUtil.showInfo(stage, "✅ Stage marked as completed!");
+                reload.run();
+            } else {
+                PopupUtil.showError(stage, "⚠️ Could not update stage.");
+            }
         });
 
         markNotDone.setOnAction(e -> {
             AssignedTask sel = tv.getSelectionModel().getSelectedItem();
             if (sel == null) {
-                new Alert(Alert.AlertType.WARNING, "Please select a task first.").showAndWait();
+                PopupUtil.showWarn(stage, "Please select a task first.");
                 return;
             }
 
-            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                    "Mark this stage as not completed?", ButtonType.YES, ButtonType.NO);
-            confirm.setHeaderText("Confirm Change");
-            confirm.showAndWait().ifPresent(resp -> {
-                if (resp == ButtonType.YES) {
-                    boolean ok = orderDAO.markStageAsIncomplete(sel.getOrderId(), sel.getStage());
-                    if (ok) {
-                        new Alert(Alert.AlertType.INFORMATION, "❌ Stage marked as not completed!").showAndWait();
-                        reload.run();
-                    } else {
-                        new Alert(Alert.AlertType.ERROR, "⚠️ Could not update stage.").showAndWait();
-                    }
-                }
-            });
+            boolean okConfirm = PopupUtil.confirm(stage, "Confirm Change", "Mark this stage as not completed?");
+            if (!okConfirm) return;
+
+            boolean ok = orderDAO.markStageAsIncomplete(sel.getOrderId(), sel.getStage());
+            if (ok) {
+                PopupUtil.showInfo(stage, "❌ Stage marked as not completed!");
+                reload.run();
+            } else {
+                PopupUtil.showError(stage, "⚠️ Could not update stage.");
+            }
         });
 
         // ---- Logout Button Action ----
         logout.setOnAction(e -> {
-            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION,
-                    "Are you sure you want to logout?", ButtonType.YES, ButtonType.NO);
-            confirm.setHeaderText("Confirm Logout");
-            confirm.showAndWait().ifPresent(resp -> {
-                if (resp == ButtonType.YES) {
-                    LoginScreen.show(stage); // Redirect to login
-                }
-            });
+            boolean okConfirm = PopupUtil.confirm(stage, "Confirm Logout", "Are you sure you want to logout?");
+            if (!okConfirm) return;
+
+            LoginScreen.show(stage); // Redirect to login
         });
 
         // ---- Header section ----

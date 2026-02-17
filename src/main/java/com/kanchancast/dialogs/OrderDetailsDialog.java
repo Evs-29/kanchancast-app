@@ -4,6 +4,7 @@ import com.jewelleryapp.dao.EmployeeDAO;
 import com.jewelleryapp.dao.OrderDAO;
 import com.kanchancast.model.OrderSummary;
 import com.kanchancast.model.StaffRow;
+import com.kanchancast.model.StageEnum;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -20,13 +21,15 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * Updated Assign Employees dialog
- * ✅ Uses the same 11 official work areas as employee creation
- * ✅ Filters by employee work area
- * ✅ Persists correctly to DB
- * ✅ Modern clean UI
+ * Assign Employees dialog
+ * - Uses the same 11 official stages everywhere (StageEnum.labels()).
+ * - Filters employees by their work_area to match the stage.
+ * - Saves assignments into order_stages.
  */
 public class OrderDetailsDialog {
+
+    // ✅ One canonical list for this dialog (same order as customer tracking)
+    private static final String[] WORK_AREAS = StageEnum.labels();
 
     public static void show(Window owner, OrderDAO orderDAO, EmployeeDAO employeeDAO, OrderSummary order) {
         if (order == null) return;
@@ -37,21 +40,6 @@ public class OrderDetailsDialog {
             dlg.initModality(Modality.WINDOW_MODAL);
         }
         dlg.setTitle("Assign employees for order: " + order.getProductName());
-
-        // --- 11 standard work areas (in correct sequence) ---
-        String[] WORK_AREAS = {
-                "Raw Material Procurement",
-                "Raw Material Procurement and Management",
-                "Casting",
-                "Investment Casting",
-                "Design & CAD Modelling",
-                "Polishing",
-                "Stone Setting",
-                "Finishing",
-                "Quality Control",
-                "Inventory & Packaging",
-                "Production"
-        };
 
         // Fetch employees + existing assignments
         List<StaffRow> allEmployees = employeeDAO.listAll();
@@ -70,7 +58,7 @@ public class OrderDetailsDialog {
             Label lbl = new Label(area + ":");
             lbl.setStyle("-fx-font-weight: 600; -fx-text-fill: #333333;");
 
-            // Filter employees by work area
+            // Filter employees by work area (must match the same stage name)
             List<StaffRow> filtered = allEmployees.stream()
                     .filter(emp -> emp.getWorkArea() != null && emp.getWorkArea().equalsIgnoreCase(area))
                     .collect(Collectors.toList());
@@ -79,7 +67,7 @@ public class OrderDetailsDialog {
             combo.setPromptText(filtered.isEmpty() ? "No employees available" : "Select employee");
             combo.setPrefWidth(280);
 
-            // Dropdown cell formatting
+            // Dropdown formatting
             combo.setCellFactory(cb -> new ListCell<>() {
                 @Override
                 protected void updateItem(StaffRow item, boolean empty) {
@@ -87,6 +75,7 @@ public class OrderDetailsDialog {
                     setText(empty || item == null ? null : item.getUserName());
                 }
             });
+
             combo.setButtonCell(new ListCell<>() {
                 @Override
                 protected void updateItem(StaffRow item, boolean empty) {
@@ -95,7 +84,7 @@ public class OrderDetailsDialog {
                 }
             });
 
-            // Pre-fill previously assigned
+            // Pre-fill existing assignment (if the assigned employee is in this filtered list)
             Integer assignedId = existingAssignments.get(area);
             if (assignedId != null) {
                 filtered.stream()
@@ -106,6 +95,7 @@ public class OrderDetailsDialog {
 
             gp.add(lbl, 0, row);
             gp.add(combo, 1, row);
+
             selectionMap.put(area, combo);
             row++;
         }
@@ -141,6 +131,8 @@ public class OrderDetailsDialog {
             for (Map.Entry<String, ComboBox<StaffRow>> entry : selectionMap.entrySet()) {
                 String area = entry.getKey();
                 StaffRow emp = entry.getValue().getValue();
+
+                // If user selected an employee, save it
                 if (emp != null) {
                     boolean ok = orderDAO.assignEmployeeToStage(order.getOrderId(), area, emp.getUserId());
                     if (ok) anyAssigned = true;
@@ -162,8 +154,10 @@ public class OrderDetailsDialog {
 
         // Root layout
         BorderPane root = new BorderPane();
+
         Label title = new Label("Assign employees for order: " + order.getProductName());
         title.setStyle("-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #333;");
+
         VBox top = new VBox(title);
         top.setAlignment(Pos.CENTER_LEFT);
         top.setPadding(new Insets(12, 0, 10, 25));
@@ -171,6 +165,7 @@ public class OrderDetailsDialog {
         root.setTop(top);
         root.setCenter(scrollPane);
         root.setBottom(footer);
+
         root.setStyle("""
             -fx-background-color: linear-gradient(to bottom right, #fafafa, #f1f1f1);
             -fx-font-family: 'Segoe UI', sans-serif;

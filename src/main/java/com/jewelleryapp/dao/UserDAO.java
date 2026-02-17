@@ -14,6 +14,22 @@ import java.util.*;
 public class UserDAO {
 
     // ==============================
+    // 🧮 DOB → AGE
+    // ==============================
+
+    /** Compute age in full years from an ISO date (YYYY-MM-DD). Returns 0 if invalid. */
+    private static int computeAgeFromDobIso(String dobIso) {
+        if (dobIso == null || dobIso.isBlank()) return 0;
+        try {
+            java.time.LocalDate dob = java.time.LocalDate.parse(dobIso.trim());
+            if (dob.isAfter(java.time.LocalDate.now())) return 0;
+            return java.time.Period.between(dob, java.time.LocalDate.now()).getYears();
+        } catch (Exception ignored) {
+            return 0;
+        }
+    }
+
+    // ==============================
     // 🔐 AUTHENTICATION
     // ==============================
 
@@ -83,19 +99,73 @@ public class UserDAO {
         return Optional.empty();
     }
 
+    /**
+     * Authenticate user using only User Code + password (supports hashed or plaintext).
+     *
+     * The full name is stored in the DB as user_name (used for display across dashboards),
+     * but the login screen should not require the user to type their name.
+     */
+    public Optional<User> authenticateByCode(String userCode, String rawPassword) {
+        final String SQL = "SELECT * FROM users WHERE user_code = ? LIMIT 1";
+
+        try (Connection c = DatabaseConnection.getConnection();
+             PreparedStatement ps = c.prepareStatement(SQL)) {
+
+            ps.setString(1, userCode.trim());
+            ResultSet rs = ps.executeQuery();
+
+            if (rs.next()) {
+                String storedHash = rs.getString("password");
+                boolean matches = storedHash.equals(rawPassword);
+
+                if (!matches) {
+                    try {
+                        matches = PasswordUtil.verifyPassword(rawPassword, storedHash);
+                    } catch (Exception ignored) {}
+                }
+
+                if (matches) {
+                    return Optional.of(mapUser(rs));
+                }
+            }
+
+        } catch (SQLException e) {
+            System.err.println("❌ authenticateByCode error: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return Optional.empty();
+    }
+
     // ==============================
     // 👥 USER CREATION
     // ==============================
 
-    /** Generic user creation — stores hashed password if PasswordUtil available. */
+    /**
+     * Generic user creation — stores hashed password if PasswordUtil available.
+     *
+     * NOTE: dob is optional (ISO: YYYY-MM-DD). If provided, age is computed automatically
+     * and also stored in the legacy age column for backward compatibility.
+     */
     public boolean createUser(String type, String username, String rawPassword,
                               String address, String gender, String workArea) {
-        String sql = "INSERT INTO users (user_type, user_name, password, address, gender, work_area) VALUES (?, ?, ?, ?, ?, ?)";
+        return createUser(type, username, rawPassword, address, gender, workArea, null);
+    }
+
+    /** Overload supporting DOB input. */
+    public boolean createUser(String type, String username, String rawPassword,
+                              String address, String gender, String workArea,
+                              String dobIso) {
+
+        // EnsureSchema adds users.dob + users.age. If a teacher forgets to run EnsureSchema,
+        // this INSERT will fail — which is OK (we show a failure alert in the UI).
+        String sql = "INSERT INTO users (user_type, user_name, password, address, gender, work_area, dob, age) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection c = DatabaseConnection.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
 
             String hashed = tryHash(rawPassword);
+            int computedAge = computeAgeFromDobIso(dobIso);
 
             ps.setString(1, type);
             ps.setString(2, username);
@@ -103,11 +173,13 @@ public class UserDAO {
             ps.setString(4, address);
             ps.setString(5, gender);
             ps.setString(6, workArea);
+            ps.setString(7, dobIso == null ? "" : dobIso.trim());
+            ps.setInt(8, computedAge);
 
             return ps.executeUpdate() > 0;
 
         } catch (SQLException e) {
-            System.err.println("❌ createUser error: " + e.getMessage());
+            System.err.println("❌ createUser(dob) error: " + e.getMessage());
             e.printStackTrace();
             return false;
         }
@@ -124,7 +196,22 @@ public class UserDAO {
 
     public List<User> listAll() {
         List<User> list = new ArrayList<>();
-        String sql = "SELECT user_id, user_name, user_type, gender, address, work_area, age FROM users ORDER BY user_id DESC";
+        // NOTE: mapUser(...) reads user_code from the ResultSet.
+        // If user_code is not selected, the Users tab will appear "broken" (empty) due to a SQL exception.
+        // ✅ If dob exists => compute age; else fallback to stored age.
+        String sql = """
+                SELECT
+                    user_id, user_code, user_name, user_type,
+                    gender, address, work_area,
+                    dob,
+                    CASE
+                        WHEN dob IS NOT NULL AND dob <> ''
+                        THEN CAST((julianday('now') - julianday(dob)) / 365.25 AS INT)
+                        ELSE COALESCE(age, 0)
+                    END AS age
+                FROM users
+                ORDER BY user_id DESC
+                """;
 
         try (Connection c = DatabaseConnection.getConnection();
              PreparedStatement ps = c.prepareStatement(sql);
@@ -176,6 +263,51 @@ public class UserDAO {
     // 🧾 DELETE / ADMIN HELPERS
     // ==============================
 
+    /** Lookup a user by id (any role). */
+    public Optional<User> findById(int userId) {
+        final String SQL = """
+                SELECT
+                    user_id, user_code, user_name, user_type,
+                    gender, address, work_area,
+                    dob,
+                    CASE
+                        WHEN dob IS NOT NULL AND dob <> ''
+                        THEN CAST((julianday('now') - julianday(dob)) / 365.25 AS INT)
+                        ELSE COALESCE(age, 0)
+                    END AS age,
+                    password
+                FROM users
+                WHERE user_id = ?
+                LIMIT 1
+                """;
+
+        try (Connection c = DatabaseConnection.getConnection();
+             PreparedStatement ps = c.prepareStatement(SQL)) {
+            ps.setInt(1, userId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) return Optional.of(mapUser(rs));
+        } catch (SQLException e) {
+            System.err.println("❌ findById error: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return Optional.empty();
+    }
+
+    /** Update password for a user (hashing handled here). */
+    public boolean updateUserPassword(int userId, String newRawPassword) {
+        final String SQL = "UPDATE users SET password = ? WHERE user_id = ?";
+        try (Connection c = DatabaseConnection.getConnection();
+             PreparedStatement ps = c.prepareStatement(SQL)) {
+            ps.setString(1, tryHash(newRawPassword));
+            ps.setInt(2, userId);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            System.err.println("❌ updateUserPassword error: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+
     public boolean deleteUser(int userId) {
         String sql = "DELETE FROM users WHERE user_id = ?";
         try (Connection c = DatabaseConnection.getConnection();
@@ -198,17 +330,18 @@ public class UserDAO {
     public List<StaffRow> listEmployeeStats() {
         List<StaffRow> out = new ArrayList<>();
         String SQL = """
-        SELECT
-            U.user_id,
-            U.user_name,
-            COALESCE(U.work_area, '') AS area,
-            COALESCE(U.age, 0) AS age,
-            COALESCE(SUM(CASE WHEN S.completed = 1 THEN 1 ELSE 0 END), 0) AS orders_done
-        FROM users U
-        LEFT JOIN order_stages S ON S.employee_id = U.user_id
-        WHERE LOWER(COALESCE(U.user_type, '')) = 'employee'
-        GROUP BY U.user_id, U.user_name, area, age
-        ORDER BY U.user_id DESC
+            SELECT
+                U.user_id,
+                U.user_name,
+                COALESCE(U.work_area, '') AS area,
+                COALESCE(U.age, 0) AS age,
+                COALESCE(SUM(
+                    CASE WHEN LOWER(COALESCE(S.completed,'no')) = 'yes' THEN 1 ELSE 0 END), 0) AS orders_done
+            FROM users U
+            LEFT JOIN order_stages S ON S.employee_id = U.user_id
+            WHERE LOWER(COALESCE(U.user_type, '')) = 'employee'
+            GROUP BY U.user_id, U.user_name, area, age
+            ORDER BY U.user_id DESC
         """;
 
         try (Connection c = DatabaseConnection.getConnection();
@@ -245,6 +378,7 @@ public class UserDAO {
         u.setAddress(rs.getString("address"));
         try { u.setArea(rs.getString("work_area")); } catch (SQLException ignored) {}
         try { u.setGender(rs.getString("gender")); } catch (SQLException ignored) {}
+        try { u.setDob(rs.getString("dob")); } catch (SQLException ignored) {}
         try { u.setAge(rs.getInt("age")); } catch (SQLException ignored) {}
         return u;
     }
@@ -257,6 +391,7 @@ public class UserDAO {
             return raw; // fallback to plaintext
         }
     }
+
     public Optional<User> createUserInternalReturn(String username, String password, String role,
                                                    String address, String gender, String workArea) {
         boolean ok = createUser(role, username, password, address, gender, workArea);
@@ -277,9 +412,10 @@ public class UserDAO {
         }
         return Optional.empty();
     }
+
     // ======================================================
-// 🧩 Signup support methods (used in SignupScreen)
-// ======================================================
+    // 🧩 Signup support methods (used in SignupScreen)
+    // ======================================================
 
     public String generateUserCode(String prefix) {
         int random = (int) (Math.random() * 900000) + 100000; // 6 digits
@@ -301,6 +437,37 @@ public class UserDAO {
 
         } catch (SQLException e) {
             System.err.println("❌ insertUser: " + e.getMessage());
+            return false;
+        }
+    }
+    public boolean createUserWithCode(String type, String username, String rawPassword,
+                                      String address, String gender, String workArea,
+                                      String dobIso, String userCode) {
+
+        String sql = "INSERT INTO users (user_type, user_name, password, address, gender, work_area, dob, age, user_code) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+        try (Connection c = DatabaseConnection.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+
+            String hashed = tryHash(rawPassword);
+            int computedAge = computeAgeFromDobIso(dobIso);
+
+            ps.setString(1, type);
+            ps.setString(2, username);
+            ps.setString(3, hashed);
+            ps.setString(4, address);
+            ps.setString(5, gender);
+            ps.setString(6, workArea);
+            ps.setString(7, dobIso == null ? "" : dobIso.trim());
+            ps.setInt(8, computedAge);
+            ps.setString(9, userCode);
+
+            return ps.executeUpdate() > 0;
+
+        } catch (SQLException e) {
+            System.err.println("❌ createUserWithCode error: " + e.getMessage());
+            e.printStackTrace();
             return false;
         }
     }

@@ -1,26 +1,28 @@
-// src/main/java/com/kanchancast/model/StageEnum.java
 package com.kanchancast.model;
 
 public enum StageEnum {
-    RAW_MATERIAL_PROCUREMENT,
-    MELTING,
-    CASTING,
-    FILING,
-    POLISHING,
-    STONE_SETTING,
-    ENGRAVING,
-    PLATING,
-    QUALITY_CONTROL,
-    PACKAGING,
-    DISPATCH;
+    RAW_MATERIAL_PROCUREMENT("Raw Material Procurement"),
+    DESIGN_CAD("Design & CAD Modelling"),
+    WAX_MODEL("Wax Model Creation"),
+    INVESTMENT_CASTING("Investment Casting"),
+    CLEANING_DEVESTING("Cleaning & Devesting"),
+    FILING_PREPOLISH("Filing & Pre-Polishing"),
+    STONE_SETTING("Stone Setting"),
+    FINAL_POLISHING("Final Polishing"),
+    PLATING("Plating"),
+    QUALITY_CONTROL("Quality Control"),
+    PACKAGING_DISPATCH("Packaging & Dispatch");
 
-    public static String firstStageName() {
-        return values()[0].name();
-    }
+    private final String label;
 
-    public static boolean isValid(String status) {
-        for (StageEnum s : values()) if (s.name().equalsIgnoreCase(status)) return true;
-        return false;
+    StageEnum(String label) { this.label = label; }
+
+    public String label() { return label; }
+
+    public static String[] labels() {
+        StageEnum[] values = values();
+        String[] out = new String[values.length];
+        for (int i = 0; i < values.length; i++) out[i] = values[i].label;
+        return out;
     }
 }
-

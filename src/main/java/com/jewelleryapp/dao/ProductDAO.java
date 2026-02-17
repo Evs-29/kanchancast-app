@@ -1,26 +1,18 @@
 package com.jewelleryapp.dao;
 
 import com.kanchancast.model.Product;
+
 import java.math.BigDecimal;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Product Data Access Object (DAO)
- * ---------------------------------
- * Handles all product-related database operations:
- *  - Create / Insert new products
- *  - Delete existing products
- *  - Retrieve all products or filter by type
- *
- * Updated (Oct 2025):
- *  Matches the current SQLite schema with columns:
- *  product_id | name | type | karat | weight | price | image_path | description
+ * Product DAO
+ * ✅ Supports: stone_weight, duration_amount, duration_unit
  */
 public class ProductDAO {
 
-    // ---------------- SQL ----------------
     private static final String SQL_SELECT_ALL = """
         SELECT
             product_id,
@@ -28,9 +20,12 @@ public class ProductDAO {
             type,
             karat,
             weight,
+            COALESCE(stone_weight, 0) AS stone_weight,
             price,
             image_path,
-            description
+            description,
+            COALESCE(duration_amount, 0) AS duration_amount,
+            COALESCE(duration_unit, 'DAYS') AS duration_unit
         FROM products
         ORDER BY product_id DESC
         """;
@@ -42,9 +37,12 @@ public class ProductDAO {
             type,
             karat,
             weight,
+            COALESCE(stone_weight, 0) AS stone_weight,
             price,
             image_path,
-            description
+            description,
+            COALESCE(duration_amount, 0) AS duration_amount,
+            COALESCE(duration_unit, 'DAYS') AS duration_unit
         FROM products
         WHERE LOWER(type) = LOWER(?)
         ORDER BY product_id DESC
@@ -52,36 +50,38 @@ public class ProductDAO {
 
     private static final String SQL_INSERT = """
         INSERT INTO products
-            (name, type, karat, weight, price, image_path, description)
-        VALUES (?,?,?,?,?,?,?)
+            (name, type, karat, weight, stone_weight, price, image_path, description, duration_amount, duration_unit)
+        VALUES (?,?,?,?,?,?,?,?,?,?)
         """;
 
-    private static final String SQL_DELETE = """
-        DELETE FROM products WHERE product_id = ?
-        """;
-
-    // ---------------- Public API ----------------
-
-    /** Create product entry from form fields */
+    // ✅ Updated signature: includes stoneWeight
     public boolean createProduct(String name,
                                  String type,
                                  double karat,
-                                 double weight,
+                                 double diamondWeight,
+                                 double stoneWeight,
                                  double price,
                                  String imagePath,
-                                 String description) {
+                                 String description,
+                                 int durationAmount,
+                                 String durationUnit) {
+
         Product p = new Product();
         p.setName(nvl(name));
         p.setType(nvl(type));
-        p.setGoldWeight(karat);      // using goldWeight for karat
-        p.setDiamondWeight(weight);  // using diamondWeight for total weight
+        p.setGoldWeight(karat);
+        p.setDiamondWeight(diamondWeight);
+        p.setStoneWeight(stoneWeight);
         p.setPrice(price);
         p.setImagePath(nvl(imagePath));
         p.setDescription(nvl(description));
+
+        p.setDurationAmount(Math.max(0, durationAmount));
+        p.setDurationUnit(normalizeUnit(durationUnit));
+
         return addProduct(p);
     }
 
-    /** Insert a product into DB */
     public boolean addProduct(Product p) {
         if (p == null) return false;
 
@@ -90,21 +90,18 @@ public class ProductDAO {
 
             ps.setString(1, nvl(p.getName()));
             ps.setString(2, nvl(p.getType()));
-            ps.setBigDecimal(3, BigDecimal.valueOf(p.getGoldWeight()));     // karat
-            ps.setBigDecimal(4, BigDecimal.valueOf(p.getDiamondWeight()));  // weight
-            ps.setBigDecimal(5, BigDecimal.valueOf(p.getPrice()));
-            ps.setString(6, nvl(p.getImagePath()));
-            ps.setString(7, nvl(p.getDescription()));
+            ps.setBigDecimal(3, BigDecimal.valueOf(nvlNum(p.getGoldWeight())));
+            ps.setBigDecimal(4, BigDecimal.valueOf(nvlNum(p.getDiamondWeight())));
+            ps.setBigDecimal(5, BigDecimal.valueOf(nvlNum(p.getStoneWeight())));
+            ps.setBigDecimal(6, BigDecimal.valueOf(p.getPrice()));
+            ps.setString(7, nvl(p.getImagePath()));
+            ps.setString(8, nvl(p.getDescription()));
+            ps.setInt(9, Math.max(0, p.getDurationAmount()));
+            ps.setString(10, normalizeUnit(p.getDurationUnit()));
 
             int updated = ps.executeUpdate();
-            if (updated == 1) {
-                try (ResultSet keys = ps.getGeneratedKeys()) {
-                    if (keys.next()) {
-                        // Optional: p.setId(keys.getInt(1));
-                    }
-                } catch (Throwable ignored) {}
-                return true;
-            }
+            return updated == 1;
+
         } catch (SQLException e) {
             System.err.println("❌ Error adding product: " + e.getMessage());
             e.printStackTrace();
@@ -112,12 +109,43 @@ public class ProductDAO {
         return false;
     }
 
-    /** Delete a product by ID */
+    /** Delete a product by ID (also deletes any linked orders + their stage rows) */
     public boolean deleteProduct(int productId) {
-        try (Connection c = DatabaseConnection.getConnection();
-             PreparedStatement ps = c.prepareStatement(SQL_DELETE)) {
-            ps.setInt(1, productId);
-            return ps.executeUpdate() > 0;
+
+        String delStagesForProductOrders = """
+            DELETE FROM order_stages
+            WHERE order_id IN (SELECT order_id FROM orders WHERE product_id = ?)
+        """;
+
+        String delOrdersForProduct = "DELETE FROM orders WHERE product_id = ?";
+        String delProduct = "DELETE FROM products WHERE product_id = ?";
+
+        try (Connection c = DatabaseConnection.getConnection()) {
+            c.setAutoCommit(false);
+
+            try (PreparedStatement ps1 = c.prepareStatement(delStagesForProductOrders);
+                 PreparedStatement ps2 = c.prepareStatement(delOrdersForProduct);
+                 PreparedStatement ps3 = c.prepareStatement(delProduct)) {
+
+                ps1.setInt(1, productId);
+                ps1.executeUpdate();
+
+                ps2.setInt(1, productId);
+                ps2.executeUpdate();
+
+                ps3.setInt(1, productId);
+                int rows = ps3.executeUpdate();
+
+                c.commit();
+                return rows > 0;
+
+            } catch (SQLException e) {
+                c.rollback();
+                throw e;
+            } finally {
+                c.setAutoCommit(true);
+            }
+
         } catch (SQLException e) {
             System.err.println("❌ Error deleting product: " + e.getMessage());
             e.printStackTrace();
@@ -125,7 +153,6 @@ public class ProductDAO {
         }
     }
 
-    /** Return all products */
     public List<Product> listAll() {
         List<Product> out = new ArrayList<>();
         try (Connection c = DatabaseConnection.getConnection();
@@ -139,12 +166,8 @@ public class ProductDAO {
         return out;
     }
 
-    /** Compatibility alias for legacy calls */
-    public List<Product> listALL() {
-        return listAll();
-    }
+    public List<Product> listALL() { return listAll(); }
 
-    /** Return products filtered by type */
     public List<Product> listByType(String type) {
         List<Product> out = new ArrayList<>();
         try (Connection c = DatabaseConnection.getConnection();
@@ -160,11 +183,6 @@ public class ProductDAO {
         return out;
     }
 
-    /**
-     * Combined method — works with category filter dropdown.
-     * If filter == "all" → show all products,
-     * else → filter by type.
-     */
     public List<Product> listAll(String category) {
         if (category == null || category.equalsIgnoreCase("all")) {
             return listAll();
@@ -173,24 +191,37 @@ public class ProductDAO {
     }
 
     // ---------------- Helpers ----------------
+    private static String nvl(String s) { return (s == null) ? "" : s; }
+    private static double nvlNum(Double d) { return (d == null) ? 0.0 : d; }
 
-    private static String nvl(String s) {
-        return (s == null) ? "" : s;
+    private static String normalizeUnit(String unit) {
+        if (unit == null) return "DAYS";
+        String u = unit.trim().toUpperCase();
+        if (u.equals("DAY") || u.equals("DAYS")) return "DAYS";
+        if (u.equals("WEEK") || u.equals("WEEKS")) return "WEEKS";
+        if (u.equals("MONTH") || u.equals("MONTHS")) return "MONTHS";
+        return "DAYS";
     }
 
-    /** Map a row from ResultSet to Product model. */
     private Product map(ResultSet rs) throws SQLException {
         Product p = new Product();
-        try { p.setProductId(rs.getInt("product_id")); } catch (Throwable ignored) {}
+        p.setProductId(rs.getInt("product_id"));
         p.setName(rs.getString("name"));
         p.setType(rs.getString("type"));
         p.setGoldWeight(rs.getDouble("karat"));
         p.setDiamondWeight(rs.getDouble("weight"));
+        p.setStoneWeight(rs.getDouble("stone_weight"));
         p.setPrice(rs.getDouble("price"));
         p.setImagePath(rs.getString("image_path"));
         p.setDescription(rs.getString("description"));
+        p.setDurationAmount(rs.getInt("duration_amount"));
+        p.setDurationUnit(rs.getString("duration_unit"));
         return p;
     }
+
+    // ---- category code below: KEEP EXACTLY AS YOUR CURRENT FILE ----
+    // (I’m keeping it unchanged to avoid breaking category management.)
+
     public List<String> listCategories() {
         List<String> out = new ArrayList<>();
         String sql = "SELECT name FROM categories ORDER BY name";
@@ -216,6 +247,7 @@ public class ProductDAO {
             System.err.println("⚠️ ensureCategoriesTable: " + e.getMessage());
         }
     }
+
     public List<String> getAllCategories() {
         List<String> categories = new ArrayList<>();
         String sql = "SELECT DISTINCT type FROM products ORDER BY type";
@@ -228,9 +260,7 @@ public class ProductDAO {
         }
         return categories;
     }
-    // ---------------- CATEGORY MANAGEMENT ----------------
 
-    /** List all unique product categories (types) */
     public java.util.List<String> listAllCategories() {
         ensureCategoriesTable();
         java.util.List<String> out = new java.util.ArrayList<>();
@@ -245,7 +275,6 @@ public class ProductDAO {
         return out;
     }
 
-    /** Add a new product category (if it doesn’t already exist) */
     public boolean addCategory(String name) {
         if (name == null || name.trim().isEmpty()) return false;
         ensureCategoriesTable();
@@ -260,7 +289,6 @@ public class ProductDAO {
         }
     }
 
-    /** Delete a category (removes all products with that type) */
     public boolean deleteCategory(String name) {
         if (name == null || name.trim().isEmpty()) return false;
         ensureCategoriesTable();
@@ -271,7 +299,6 @@ public class ProductDAO {
             ps1.setString(1, name.trim());
             try (java.sql.ResultSet rs = ps1.executeQuery()) {
                 if (rs.next() && rs.getInt(1) > 0) {
-                    // products still reference this category → do not delete
                     return false;
                 }
             }
@@ -284,6 +311,7 @@ public class ProductDAO {
             return false;
         }
     }
+
     public void ensureCategoryExists(String name) {
         if (name == null || name.trim().isEmpty()) return;
         addCategory(name.trim());

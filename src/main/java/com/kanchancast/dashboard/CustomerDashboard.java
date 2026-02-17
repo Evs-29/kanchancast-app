@@ -18,28 +18,21 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.*;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.stage.Stage;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Customer Dashboard
- * -------------------
- * Displays:
- *  - All available products (left panel)
- *  - User’s placed orders (right panel)
- *  - Allows placing new orders and tracking progress.
- *  - Dynamically loads categories from DB.
- */
 public class CustomerDashboard {
 
     public static void show(Stage stage, User user) {
         ProductDAO productDAO = new ProductDAO();
         OrderDAO orderDAO = new OrderDAO();
 
-        // ---------- ORDERS TABLE (RIGHT PANEL) ----------
+        // ---------- ORDERS TABLE ----------
         TableView<OrderSummary> ordersTable = new TableView<>();
         ordersTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_ALL_COLUMNS);
 
@@ -52,6 +45,9 @@ public class CustomerDashboard {
         TableColumn<OrderSummary, String> colDate = new TableColumn<>("Date Ordered");
         colDate.setCellValueFactory(new PropertyValueFactory<>("dateOrdered"));
 
+        TableColumn<OrderSummary, String> colDelivery = new TableColumn<>("Delivery Date");
+        colDelivery.setCellValueFactory(new PropertyValueFactory<>("deliveryDate"));
+
         TableColumn<OrderSummary, String> colStatus = new TableColumn<>("Status");
         colStatus.setCellValueFactory(new PropertyValueFactory<>("status"));
 
@@ -59,10 +55,11 @@ public class CustomerDashboard {
         colProgress.setCellValueFactory(v ->
                 new SimpleIntegerProperty(v.getValue().getProgressPercent()).asObject());
 
-        ordersTable.getColumns().addAll(colId, colProduct, colDate, colStatus, colProgress);
+        ordersTable.getColumns().addAll(
+                colId, colProduct, colDate, colDelivery, colStatus, colProgress
+        );
 
-        Label ordersLabel = new Label("My Orders");
-        ordersLabel.getStyleClass().add("section-title");
+        Label ordersLabel = new Label("My Orders"); // <-- make bigger (we will style after UIKit.apply)
 
         Button refreshOrders = new Button("Refresh");
         Button trackProgress = new Button("Track Progress");
@@ -71,98 +68,131 @@ public class CustomerDashboard {
         ordersBar.setAlignment(Pos.CENTER_LEFT);
         ordersBar.setPadding(new Insets(5, 0, 10, 0));
 
-        VBox ordersPanel = new VBox(8, ordersLabel, ordersBar, ordersTable);
-        ordersPanel.setPadding(new Insets(10));
+        VBox ordersPanel = new VBox(10, ordersLabel, ordersBar, ordersTable);
+        ordersPanel.setPadding(new Insets(12));
         ordersPanel.getStyleClass().add("card");
 
-        // ✅ Load user’s orders
         Runnable loadOrders = () -> {
-            List<OrderSummary> orders = orderDAO.getOrdersForUser(user.getUserId());
-            ordersTable.setItems(FXCollections.observableArrayList(orders));
+            ordersTable.setItems(FXCollections.observableArrayList(
+                    orderDAO.getOrdersForUser(user.getUserId())
+            ));
         };
 
         refreshOrders.setOnAction(e -> loadOrders.run());
+
         trackProgress.setOnAction(e -> {
             OrderSummary selected = ordersTable.getSelectionModel().getSelectedItem();
             if (selected == null) {
                 new Alert(Alert.AlertType.WARNING, "Please select an order first!", ButtonType.OK).showAndWait();
                 return;
             }
-            new OrderTrackingDialog(stage, selected, orderDAO).show();
+            new OrderTrackingDialog(stage, selected, orderDAO).showAndWait();
+            loadOrders.run();
         });
 
-        // ---------- PRODUCTS GRID (LEFT PANEL) ----------
-        Label productsLabel = new Label("Products");
-        productsLabel.getStyleClass().add("section-title");
+        // ---------- PRODUCTS ----------
+        Label productsLabel = new Label("Products"); // <-- make bigger (we will style after UIKit.apply)
 
         ComboBox<String> categoryFilter = new ComboBox<>();
         categoryFilter.setPromptText("Select category...");
 
         Button refreshProducts = new Button("Refresh");
-        HBox productsBar = new HBox(10, new Label("Category:"), categoryFilter, refreshProducts);
+
+        HBox productsBar = new HBox(10,
+                new Label("Category:"), categoryFilter, refreshProducts);
         productsBar.setAlignment(Pos.CENTER_LEFT);
         productsBar.setPadding(new Insets(5, 0, 10, 0));
 
         ProductGrid productGrid = new ProductGrid(product ->
-                new ProductDetailsDialog(stage, product, orderDAO, user, loadOrders::run).showAndWait()
+                new ProductDetailsDialog(stage, product, orderDAO, user, loadOrders).showAndWait()
         );
 
-        // ✅ Dynamically load distinct categories from DB
         Runnable loadCategories = () -> {
             List<String> categories = new ArrayList<>();
-            categories.add("all"); // Always show 'all' first
+            categories.add("all");
+
             try (Connection conn = com.jewelleryapp.dao.DatabaseConnection.getConnection();
-                 PreparedStatement ps = conn.prepareStatement("SELECT DISTINCT LOWER(TRIM(type)) AS type FROM products WHERE type IS NOT NULL AND TRIM(type) != '' ORDER BY type ASC");
+                 PreparedStatement ps = conn.prepareStatement(
+                         "SELECT DISTINCT LOWER(TRIM(type)) AS type FROM products " +
+                                 "WHERE type IS NOT NULL AND TRIM(type) != '' ORDER BY type"
+                 );
                  ResultSet rs = ps.executeQuery()) {
 
-                while (rs.next()) {
-                    categories.add(rs.getString("type"));
-                }
-
+                while (rs.next()) categories.add(rs.getString("type"));
             } catch (SQLException ex) {
-                System.err.println("⚠️ Error loading categories: " + ex.getMessage());
+                System.err.println("Category load error: " + ex.getMessage());
             }
 
             categoryFilter.setItems(FXCollections.observableArrayList(categories));
             categoryFilter.setValue("all");
         };
 
-        // ✅ Load products depending on selected category
         Runnable loadProducts = () -> {
-            String selectedCategory = categoryFilter.getValue();
-            List<Product> products;
-
-            if (selectedCategory == null || selectedCategory.equalsIgnoreCase("all")) {
-                products = productDAO.listAll();
-            } else {
-                products = productDAO.listByType(selectedCategory.trim().toLowerCase());
-            }
-
-            productGrid.setItems(products != null ? products : List.of());
+            String cat = categoryFilter.getValue();
+            List<Product> products = (cat == null || cat.equals("all"))
+                    ? productDAO.listAll()
+                    : productDAO.listByType(cat);
+            productGrid.setItems(products);
         };
 
-        // Auto-refresh on dropdown change
         categoryFilter.setOnAction(e -> loadProducts.run());
         refreshProducts.setOnAction(e -> loadProducts.run());
 
-        VBox productsPanel = new VBox(8, productsLabel, productsBar, productGrid);
-        productsPanel.setPadding(new Insets(10));
+        VBox productsPanel = new VBox(10, productsLabel, productsBar, productGrid);
+        productsPanel.setPadding(new Insets(12));
         productsPanel.getStyleClass().add("card");
 
-        // ---------- LAYOUT ----------
+        // ---------- CENTER SPLIT ----------
         SplitPane splitPane = new SplitPane(productsPanel, ordersPanel);
         splitPane.setDividerPositions(0.55);
 
+        // ---------- TOP BAR ----------
+        String name = (user != null && user.getUserName() != null && !user.getUserName().isBlank())
+                ? user.getUserName()
+                : "Customer";
+
+        Label welcomeLabel = new Label("Welcome " + name); // <-- match Admin Dashboard header style
+
         Button logoutButton = new Button("Logout");
         logoutButton.setOnAction(e -> ScreenRouter.goToLogin(stage));
-        HBox topBar = new HBox(logoutButton);
-        topBar.setAlignment(Pos.CENTER_RIGHT);
+
+        BorderPane topBar = new BorderPane();
+        topBar.setCenter(welcomeLabel);
+        topBar.setRight(logoutButton);
+        BorderPane.setAlignment(welcomeLabel, Pos.CENTER);
+        BorderPane.setMargin(logoutButton, new Insets(0, 10, 0, 0));
         topBar.setPadding(new Insets(10));
         topBar.getStyleClass().add("toolbar");
 
-        BorderPane root = new BorderPane(splitPane, topBar, null, null, null);
+        // ---------- ROOT ----------
+        BorderPane root = new BorderPane();
+        root.setTop(topBar);
+        root.setCenter(splitPane);
+
         Scene scene = new Scene(root, 1180, 720);
+
+        // Apply the theme first (it was overriding your fonts)
         UIKit.apply(scene);
+
+        // ✅ NOW FORCE the sizes using inline styles (inline style overrides the stylesheet)
+        // Admin header style: Verdana 28, #333333, padding like AdminDashboard
+        welcomeLabel.setStyle(
+                "-fx-font-family: 'Verdana';" +
+                        "-fx-font-size: 28px;" +
+                        "-fx-font-weight: normal;" +
+                        "-fx-text-fill: #333333;"
+        );
+        welcomeLabel.setPadding(new Insets(12, 0, 8, 0));
+
+        // Bigger section headings so they don't look tiny
+        String sectionHeadingStyle =
+                "-fx-font-family: 'Verdana';" +
+                        "-fx-font-size: 24px;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-text-fill: #333333;";
+
+        productsLabel.setStyle(sectionHeadingStyle);
+        ordersLabel.setStyle(sectionHeadingStyle);
 
         stage.setScene(scene);
         stage.setTitle("Kanchan Cast — Customer Dashboard");

@@ -1,21 +1,51 @@
 package com.kanchancast.nav;
 
-import javafx.stage.Stage;
 import com.kanchancast.auth.LoginScreen;
 import com.kanchancast.auth.SignupScreen;
 import com.kanchancast.dashboard.AdminDashboard;
+import com.kanchancast.dashboard.CustomerDashboard;
 import com.kanchancast.dashboard.EmployeeDashboard;
 import com.kanchancast.dashboard.OwnerDashboard;
-import com.kanchancast.dashboard.CustomerDashboard;
 import com.kanchancast.model.User;
+import javafx.application.Platform;
+import javafx.stage.Stage;
 
 /**
  * Central class for navigating between all top-level screens in the app.
  * Handles login, signup, and routing to role-based dashboards.
+ *
+ * IMPORTANT (macOS fullscreen fix):
+ * Setting a new Scene can cause JavaFX to exit fullscreen on macOS.
+ * So we preserve fullscreen/maximized state across navigation.
  */
 public final class ScreenRouter {
 
-    private ScreenRouter() {} // prevent instantiation
+    private ScreenRouter() {}
+
+    // ----------------------------
+    // WINDOW STATE PRESERVER
+    // ----------------------------
+
+    private static void navigatePreserveWindow(Stage stage, Runnable navigationAction) {
+        if (stage == null) return;
+
+        final boolean wasFullScreen = stage.isFullScreen();
+        final boolean wasMaximized  = stage.isMaximized();
+
+        // Perform navigation (this usually calls stage.setScene(...))
+        navigationAction.run();
+
+        // Restore fullscreen/maximized on next pulse (prevents shrinking / new window size)
+        Platform.runLater(() -> {
+            try {
+                if (wasFullScreen && !stage.isFullScreen()) {
+                    stage.setFullScreen(true);
+                } else if (!wasFullScreen && wasMaximized && !stage.isMaximized()) {
+                    stage.setMaximized(true);
+                }
+            } catch (Exception ignored) {}
+        });
+    }
 
     // ----------------------------
     // BASIC NAVIGATION
@@ -23,12 +53,12 @@ public final class ScreenRouter {
 
     /** Navigate to the Login screen. */
     public static void goToLogin(Stage stage) {
-        LoginScreen.show(stage);
+        navigatePreserveWindow(stage, () -> LoginScreen.show(stage));
     }
 
     /** Navigate to the Signup screen. */
     public static void goToSignup(Stage stage) {
-        SignupScreen.show(stage);
+        navigatePreserveWindow(stage, () -> SignupScreen.show(stage));
     }
 
     // Legacy aliases (for backward compatibility)
@@ -52,33 +82,35 @@ public final class ScreenRouter {
 
         String role = user.getUserType().trim().toLowerCase();
 
-        try {
-            switch (role) {
-                case "admin" -> {
-                    System.out.println("🔹 Routing to Admin Dashboard...");
-                    AdminDashboard.show(stage, user);
+        navigatePreserveWindow(stage, () -> {
+            try {
+                switch (role) {
+                    case "admin" -> {
+                        System.out.println("🔹 Routing to Admin Dashboard...");
+                        AdminDashboard.show(stage, user);
+                    }
+                    case "employee" -> {
+                        System.out.println("🔹 Routing to Employee Dashboard...");
+                        EmployeeDashboard.show(stage, user);
+                    }
+                    case "owner" -> {
+                        System.out.println("🔹 Routing to Owner Dashboard...");
+                        OwnerDashboard.show(stage, user);
+                    }
+                    case "customer" -> {
+                        System.out.println("🔹 Routing to Customer Dashboard...");
+                        CustomerDashboard.show(stage, user);
+                    }
+                    default -> {
+                        System.err.println("⚠️ Unknown role: " + role + ". Returning to login.");
+                        LoginScreen.show(stage);
+                    }
                 }
-                case "employee" -> {
-                    System.out.println("🔹 Routing to Employee Dashboard...");
-                    EmployeeDashboard.show(stage, user);
-                }
-                case "owner" -> {
-                    System.out.println("🔹 Routing to Owner Dashboard...");
-                    OwnerDashboard.show(stage, user);
-                }
-                case "customer" -> {
-                    System.out.println("🔹 Routing to Customer Dashboard...");
-                    CustomerDashboard.show(stage, user);
-                }
-                default -> {
-                    System.err.println("⚠️ Unknown role: " + role + ". Returning to login.");
-                    goToLogin(stage);
-                }
+            } catch (Exception e) {
+                System.err.println("❌ Error while routing to dashboard: " + e.getMessage());
+                e.printStackTrace();
+                LoginScreen.show(stage);
             }
-        } catch (Exception e) {
-            System.err.println("❌ Error while routing to dashboard: " + e.getMessage());
-            e.printStackTrace();
-            goToLogin(stage);
-        }
+        });
     }
 }

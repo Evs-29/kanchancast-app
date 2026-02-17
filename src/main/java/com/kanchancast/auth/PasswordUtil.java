@@ -28,7 +28,7 @@ public final class PasswordUtil {
         return false;
     }
 
-    /** Hash a password with PBKDF2+random salt. Stored format: pbkdf2$<iter>$<base64salt>$<base64hash> */
+    /** Hash a password with PBKDF2+random . */
     public static String hashPassword(String raw) {
         try {
             byte[] salt = new byte[SALT_BYTES];
@@ -43,7 +43,7 @@ public final class PasswordUtil {
         }
     }
 
-    /** Verify raw password against a stored string created by {@link #hashPassword(String)}. */
+    /** Verify raw password against a stored string created by {link #hashPassword(String)}. */
     public static boolean verifyPassword(String raw, String stored) {
         if (raw == null || stored == null) return false;
         try {

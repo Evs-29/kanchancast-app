@@ -3,6 +3,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
+
     <groupId>com.kanchankast</groupId>
     <artifactId>jewelleryapp</artifactId>
     <version>1.0-SNAPSHOT</version>
@@ -10,23 +11,34 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.release>21</maven.compiler.release>
-        <!-- Use a stable JavaFX version -->
+
+        <!-- JavaFX version -->
         <javafx.version>21.0.3</javafx.version>
-        <!-- Change to mac-aarch64 if you are on Apple Silicon -->
+
+        <!-- mac-aarch64 for Apple Silicon. If Intel Mac, change to mac. -->
         <javafx.classifier>mac-aarch64</javafx.classifier>
     </properties>
 
     <dependencies>
-        <!-- JavaFX GUI (no FXML needed right now) -->
+        <!-- JavaFX -->
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-controls</artifactId>
             <version>${javafx.version}</version>
             <classifier>${javafx.classifier}</classifier>
         </dependency>
+
         <dependency>
             <groupId>org.openjfx</groupId>
             <artifactId>javafx-graphics</artifactId>
+            <version>${javafx.version}</version>
+            <classifier>${javafx.classifier}</classifier>
+        </dependency>
+
+        <!-- ✅ REQUIRED for @FXML + FXMLLoader -->
+        <dependency>
+            <groupId>org.openjfx</groupId>
+            <artifactId>javafx-fxml</artifactId>
             <version>${javafx.version}</version>
             <classifier>${javafx.classifier}</classifier>
         </dependency>
@@ -51,7 +63,7 @@
                 </configuration>
             </plugin>
 
-            <!-- Run JavaFX app easily via Maven -->
+            <!-- Run JavaFX app via Maven -->
             <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>

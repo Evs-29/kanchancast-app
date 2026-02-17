@@ -3,6 +3,7 @@ package com.kanchancast.auth;
 import com.jewelleryapp.dao.UserDAO;
 import com.kanchancast.model.User;
 import com.kanchancast.nav.ScreenRouter;
+import com.kanchancast.ui.PopupUtil;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -33,11 +34,6 @@ public class LoginScreen {
         tfUserCode.setPromptText("Enter your unique User Code");
         tfUserCode.setMaxWidth(250);
 
-        Label lblUsername = new Label("Username:");
-        TextField tfUsername = new TextField();
-        tfUsername.setPromptText("Enter your username");
-        tfUsername.setMaxWidth(250);
-
         Label lblPass = new Label("Password:");
         PasswordField tfPass = new PasswordField();
         tfPass.setPromptText("Enter password");
@@ -55,20 +51,21 @@ public class LoginScreen {
 
         // ---------- ACTIONS ----------
         btnLogin.setOnAction(e -> {
-            String userCode = tfUserCode.getText().trim();
-            String username = tfUsername.getText().trim();
-            String password = tfPass.getText().trim();
+            String userCode = tfUserCode.getText() == null ? "" : tfUserCode.getText().trim();
+            String password = tfPass.getText() == null ? "" : tfPass.getText().trim();
 
-            if (userCode.isEmpty() || username.isEmpty() || password.isEmpty()) {
-                showAlert("Error", "Please fill in all fields — User Code, Username, and Password.");
+            if (userCode.isEmpty() || password.isEmpty()) {
+                // ✅ owned popup (stays on same screen)
+                PopupUtil.showWarn(stage, "Please fill in all fields — User Code and Password.");
                 return;
             }
 
             UserDAO dao = new UserDAO();
-            Optional<User> userOpt = dao.authenticateFull(userCode, username, password); // ✅ new method
+            Optional<User> userOpt = dao.authenticateByCode(userCode, password);
 
             if (userOpt.isEmpty()) {
-                showAlert("Login Failed", "Invalid credentials. Please try again.");
+                // ✅ owned popup (stays on same screen)
+                PopupUtil.showError(stage, "Invalid credentials. Please try again.");
             } else {
                 User user = userOpt.get();
                 ScreenRouter.showDashboard(stage, user);
@@ -80,7 +77,6 @@ public class LoginScreen {
         // ---------- LAYOUT CARD ----------
         VBox loginBox = new VBox(12, title, subtitle,
                 lblUserCode, tfUserCode,
-                lblUsername, tfUsername,
                 lblPass, tfPass,
                 btnLogin, btnSignup);
 
@@ -98,13 +94,5 @@ public class LoginScreen {
         stage.setScene(scene);
         stage.setTitle("Kanchan Cast — Login");
         stage.show();
-    }
-
-    private static void showAlert(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.WARNING);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
     }
 }

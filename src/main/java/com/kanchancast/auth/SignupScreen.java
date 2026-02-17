@@ -3,6 +3,7 @@ package com.kanchancast.auth;
 import com.jewelleryapp.dao.UserDAO;
 import com.kanchancast.model.User;
 import com.kanchancast.nav.ScreenRouter;
+import com.kanchancast.ui.PopupUtil;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -57,13 +58,14 @@ public class SignupScreen {
 
         // ---------- ACTIONS ----------
         btnSignup.setOnAction(e -> {
-            String name = tfName.getText().trim();
-            String password = tfPass.getText().trim();
+            String name = tfName.getText() == null ? "" : tfName.getText().trim();
+            String password = tfPass.getText() == null ? "" : tfPass.getText().trim();
             String gender = cbGender.getValue();
-            String address = tfAddress.getText().trim();
+            String address = tfAddress.getText() == null ? "" : tfAddress.getText().trim();
 
             if (name.isEmpty() || password.isEmpty() || gender == null || address.isEmpty()) {
-                showAlert("Error", "Please fill in all fields.");
+                // ✅ owned popup (stays on same screen)
+                PopupUtil.showWarn(stage, "Please fill in all fields.");
                 return;
             }
 
@@ -81,11 +83,17 @@ public class SignupScreen {
             boolean created = dao.insertUser(user);
 
             if (created) {
-                showAlert("✅ Account Created Successfully",
-                        "Your account has been created!\n\nYour User Code is: " + userCode + "\n\nPlease use it to log in.");
+                // ✅ owned popup (stays on same screen)
+                PopupUtil.showInfo(stage,
+                        "✅ Account Created Successfully\n\n" +
+                                "Your account has been created!\n\n" +
+                                "Your User Code is: " + userCode + "\n\n" +
+                                "Please use it to log in.");
+
                 ScreenRouter.goToLogin(stage);
             } else {
-                showAlert("⚠️ Error", "Failed to create account. Try again later.");
+                // ✅ owned popup (stays on same screen)
+                PopupUtil.showError(stage, "Failed to create account. Try again later.");
             }
         });
 
@@ -113,13 +121,5 @@ public class SignupScreen {
         stage.setScene(scene);
         stage.setTitle("Kanchan Cast — Sign Up");
         stage.show();
-    }
-
-    private static void showAlert(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
     }
 }

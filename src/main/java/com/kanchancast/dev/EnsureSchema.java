@@ -6,11 +6,13 @@ import java.security.SecureRandom;
 import java.sql.*;
 
 /**
- * Safe to re-run:
  * - Ensures base tables exist
  * - Adds users.user_code and users.work_area if missing
+ * - Adds users.dob and users.age (age kept for backward compatibility)
  * - Backfills user_code
  * - Creates order_assignments (order_id, stage TEXT, employee_id) with PK(order_id, stage)
+ * - Creates order_progress
+ * - Creates order_stages + unique index
  * - UNIQUE index on users.user_code
  */
 public class EnsureSchema {
@@ -20,7 +22,7 @@ public class EnsureSchema {
             try (Statement st = conn.createStatement()) {
                 st.execute("PRAGMA foreign_keys = ON");
 
-                // USERS, PRODUCTS, ORDERS creation (unchanged)
+                // USERS, PRODUCTS, ORDERS creation
                 st.execute("""
                     CREATE TABLE IF NOT EXISTS users (
                         user_id   INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,19 +65,25 @@ public class EnsureSchema {
             ensureUniqueIndexOnUserCode(conn);
             ensureColumn(conn, "users", "work_area", "ALTER TABLE users ADD COLUMN work_area TEXT");
 
+            // dob is the source of truth; age column kept to avoid breaking older code/records
+            ensureColumn(conn, "users", "dob", "ALTER TABLE users ADD COLUMN dob TEXT");
+            ensureColumn(conn, "users", "age", "ALTER TABLE users ADD COLUMN age INTEGER DEFAULT 0");
+
             // assignments table (admin picks which employee per stage)
             ensureOrderAssignmentsTable(conn);
 
-            // NEW: simple progress table (one row per (order,stage) when the employee marks it)
+            // progress table
             ensureOrderProgressTable(conn);
 
-            System.out.println("✅ Schema verified: user_code, work_area, order_assignments, order_progress ready.");
+            // main app uses order_stages
+            ensureOrderStagesTable(conn);
+            ensureOrderStagesUniqueIndex(conn);
+
+            System.out.println("✅ Schema verified: user_code, work_area, dob, age, order_assignments, order_progress, order_stages ready.");
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
-
-    // --- existing helpers (ensureColumn, backfillMissingUserCodes, ensureUniqueIndexOnUserCode, ensureOrderAssignmentsTable) stay the same ---
 
     private static void ensureOrderProgressTable(Connection conn) throws SQLException {
         try (Statement st = conn.createStatement()) {
@@ -92,12 +100,13 @@ public class EnsureSchema {
         }
     }
 
-
     private static void ensureColumn(Connection conn, String table, String column, String alterSql) throws SQLException {
         boolean has = false;
         try (PreparedStatement ps = conn.prepareStatement("PRAGMA table_info(" + table + ")");
              ResultSet rs = ps.executeQuery()) {
-            while (rs.next()) if (column.equalsIgnoreCase(rs.getString("name"))) { has = true; break; }
+            while (rs.next()) {
+                if (column.equalsIgnoreCase(rs.getString("name"))) { has = true; break; }
+            }
         }
         if (!has) {
             try (Statement st = conn.createStatement()) {
@@ -164,5 +173,31 @@ public class EnsureSchema {
         StringBuilder sb = new StringBuilder("KC-");
         for (int i = 0; i < 12; i++) sb.append(ALPH[RNG.nextInt(ALPH.length)]);
         return sb.toString();
+    }
+
+    private static void ensureOrderStagesTable(Connection conn) throws SQLException {
+        try (Statement st = conn.createStatement()) {
+            st.execute("""
+            CREATE TABLE IF NOT EXISTS order_stages (
+                stage_id    INTEGER PRIMARY KEY AUTOINCREMENT,
+                order_id    INTEGER NOT NULL,
+                stage_name  TEXT    NOT NULL,
+                employee_id INTEGER,
+                assigned_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                completed   TEXT DEFAULT 'No',
+                FOREIGN KEY(order_id)    REFERENCES orders(order_id) ON DELETE CASCADE,
+                FOREIGN KEY(employee_id) REFERENCES users(user_id)   ON DELETE RESTRICT
+            )
+        """);
+        }
+    }
+
+    private static void ensureOrderStagesUniqueIndex(Connection conn) throws SQLException {
+        try (Statement st = conn.createStatement()) {
+            st.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_order_stages_unique
+            ON order_stages(order_id, stage_name)
+        """);
+        }
     }
 }
