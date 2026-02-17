@@ -18,6 +18,12 @@ import java.util.Optional;
 public class LoginScreen {
 
     public static void show(Stage stage) {
+        // ✅ Fix: Clear any previous stylesheets (e.g. from Dashboard) to ensure Login
+        // looks clean
+        if (stage.getScene() != null) {
+            stage.getScene().getStylesheets().clear();
+        }
+
         // ---------- TITLE ----------
         Label title = new Label("💎 Welcome to Kanchan Cast 💎");
         title.setFont(Font.font("Verdana", FontWeight.BOLD, 28));

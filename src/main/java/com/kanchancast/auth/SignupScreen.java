@@ -16,6 +16,11 @@ import javafx.stage.Stage;
 public class SignupScreen {
 
     public static void show(Stage stage) {
+        // ✅ Fix: Clear any previous stylesheets
+        if (stage.getScene() != null) {
+            stage.getScene().getStylesheets().clear();
+        }
+
         // ---------- TITLE ----------
         Label title = new Label("💎 Create Your Kanchan Cast Account 💎");
         title.setFont(Font.font("Verdana", FontWeight.BOLD, 24));

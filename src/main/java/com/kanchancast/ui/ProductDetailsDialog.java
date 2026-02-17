@@ -15,8 +15,8 @@ import java.net.URL;
 /**
  * Customer-facing Product Details dialog.
  * Exactly 2 buttons:
- *  - Close
- *  - Buy
+ * - Close
+ * - Buy
  */
 public class ProductDetailsDialog extends Dialog<Boolean> {
 
@@ -45,7 +45,8 @@ public class ProductDetailsDialog extends Dialog<Boolean> {
     private void loadUI() {
         try {
             URL fxml = ProductDetailsDialog.class.getResource("/com/kanchancast/ui/ProductDetailsDialog.fxml");
-            if (fxml == null) throw new IOException("Missing FXML: /com/kanchancast/ui/ProductDetailsDialog.fxml");
+            if (fxml == null)
+                throw new IOException("Missing FXML: /com/kanchancast/ui/ProductDetailsDialog.fxml");
 
             FXMLLoader loader = new FXMLLoader(fxml);
             DialogPane pane = loader.load();
@@ -59,11 +60,13 @@ public class ProductDetailsDialog extends Dialog<Boolean> {
 
             // Populate UI with product data
             ProductDetailsDialogController controller = loader.getController();
-            if (controller != null) controller.setProduct(product);
+            if (controller != null)
+                controller.setProduct(product);
 
             // Force exactly two buttons (avoid weird duplicates)
             pane.getButtonTypes().removeIf(bt -> {
-                if (bt == null || bt.getText() == null) return false;
+                if (bt == null || bt.getText() == null)
+                    return false;
                 String t = bt.getText().trim().toLowerCase();
                 return t.equals("close") || t.equals("cancel") || t.equals("buy");
             });
@@ -76,7 +79,8 @@ public class ProductDetailsDialog extends Dialog<Boolean> {
             Button buyBtn = (Button) pane.lookupButton(buyType);
 
             // Make both buttons blue
-            if (closeBtn != null) closeBtn.getStyleClass().add("primary");
+            if (closeBtn != null)
+                closeBtn.getStyleClass().add("primary");
 
             if (buyBtn != null) {
                 buyBtn.getStyleClass().add("primary");
@@ -96,10 +100,18 @@ public class ProductDetailsDialog extends Dialog<Boolean> {
                         return;
                     }
 
-                    UIKit.toastInfo("Order Placed", "Your order has been placed successfully.");
+                    Alert a = new Alert(Alert.AlertType.INFORMATION);
+                    a.setTitle("Order Placed");
+                    a.setHeaderText(null);
+                    a.setContentText("Your order has been placed successfully.");
+                    a.initOwner(getDialogPane().getScene().getWindow());
+                    a.showAndWait();
 
                     if (onOrderPlaced != null) {
-                        try { onOrderPlaced.run(); } catch (Exception ignored) {}
+                        try {
+                            onOrderPlaced.run();
+                        } catch (Exception ignored) {
+                        }
                     }
 
                     setResult(Boolean.TRUE);

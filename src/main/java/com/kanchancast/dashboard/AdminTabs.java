@@ -28,10 +28,10 @@ import javafx.application.Platform;
 public class AdminTabs {
 
     public static TabPane buildTabs(Stage stage,
-                                    ProductDAO productDAO,
-                                    OrderDAO orderDAO,
-                                    EmployeeDAO employeeDAO,
-                                    Runnable onDataChanged) {
+            ProductDAO productDAO,
+            OrderDAO orderDAO,
+            EmployeeDAO employeeDAO,
+            Runnable onDataChanged) {
 
         TabPane tabs = new TabPane();
         tabs.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
@@ -40,6 +40,10 @@ public class AdminTabs {
         // ===== PRODUCTS TAB =====
         // ==========================
         TableView<Product> productTable = new TableView<>();
+        // ✅ FIX: Use ALL_COLUMNS policy so description doesn't eat everything.
+        // Columns will share space, users can resize or scroll if needed.
+        // ✅ FIX: Use FLEX_LAST_COLUMN so Description takes remaining space
+        // and set reasonable initial widths for other columns.
         productTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY_FLEX_LAST_COLUMN);
 
         TableColumn<Product, String> pimg = new TableColumn<>("Image");
@@ -64,12 +68,18 @@ public class AdminTabs {
 
         TableColumn<Product, Number> pid = new TableColumn<>("Product ID");
         pid.setCellValueFactory(c -> new SimpleIntegerProperty(c.getValue().getProductId()));
+        pid.setMinWidth(80);
+        pid.setPrefWidth(100);
 
         TableColumn<Product, String> pname = new TableColumn<>("Product Name");
         pname.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getName()));
+        pname.setMinWidth(120);
+        pname.setPrefWidth(180);
 
         TableColumn<Product, String> ptype = new TableColumn<>("Category");
         ptype.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getType()));
+        ptype.setMinWidth(100);
+        ptype.setPrefWidth(120);
 
         TableColumn<Product, String> pdesc = new TableColumn<>("Description");
         pdesc.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getDescription()));
@@ -117,7 +127,6 @@ public class AdminTabs {
             fireRefresh(onDataChanged); // refresh KPIs/charts too
         });
 
-
         btnDeleteProduct.setOnAction(e -> {
             Product selected = productTable.getSelectionModel().getSelectedItem();
             if (selected == null) {
@@ -148,7 +157,8 @@ public class AdminTabs {
             }
         });
 
-        HBox productBtns = new HBox(10, btnAddProduct, btnViewProduct, btnRefreshProduct, btnDeleteProduct, btnManageCategories);
+        HBox productBtns = new HBox(10, btnAddProduct, btnViewProduct, btnRefreshProduct, btnDeleteProduct,
+                btnManageCategories);
         VBox productBox = new VBox(10, new Label("All Products"), productBtns, productTable);
         productBox.setPadding(new Insets(10));
         VBox.setVgrow(productTable, Priority.ALWAYS);
@@ -227,8 +237,8 @@ public class AdminTabs {
             boolean ok = confirm(
                     stage,
                     "Delete Order",
-                    "Delete Order #" + selected.getOrderId() + " (" + selected.getProductName() + ")?\n\nThis will also remove its stage tracking."
-            );
+                    "Delete Order #" + selected.getOrderId() + " (" + selected.getProductName()
+                            + ")?\n\nThis will also remove its stage tracking.");
 
             if (ok) {
                 boolean deleted = orderDAO.deleteOrder(selected.getOrderId());
@@ -242,7 +252,7 @@ public class AdminTabs {
 
         btnRefreshOrders.setOnAction(e -> {
             orderTable.setItems(FXCollections.observableArrayList(orderDAO.listAll()));
-            fireRefresh(onDataChanged); //  refresh KPIs/charts too
+            fireRefresh(onDataChanged); // refresh KPIs/charts too
         });
 
         HBox orderBtns = new HBox(10, btnAssign, btnViewOrder, btnDeleteOrder, btnRefreshOrders);
@@ -294,7 +304,8 @@ public class AdminTabs {
             TableRow<StaffRow> row = new TableRow<>();
             row.setOnMouseClicked(event -> {
                 if (!row.isEmpty() && event.getClickCount() == 2 && event.isPrimaryButtonDown()) {
-                    EmployeeDetailsDialog.show(stage, employeeDAO, row.getItem()); // reset password is inside this dialog
+                    EmployeeDetailsDialog.show(stage, employeeDAO, row.getItem()); // reset password is inside this
+                                                                                   // dialog
                 }
             });
             return row;
@@ -336,8 +347,7 @@ public class AdminTabs {
             dpDob.setPromptText("YYYY-MM-DD");
 
             ComboBox<String> tfArea = new ComboBox<>(FXCollections.observableArrayList(
-                    com.kanchancast.model.StageEnum.labels()
-            ));
+                    com.kanchancast.model.StageEnum.labels()));
             tfArea.setValue(com.kanchancast.model.StageEnum.labels()[0]);
 
             int r = 0;
@@ -362,33 +372,65 @@ public class AdminTabs {
                 String addr = tfAddr.getText() == null ? "" : tfAddr.getText().trim();
                 String area = tfArea.getValue();
 
-                if (name.isEmpty()) { PopupUtil.showError(stage, "Username cannot be empty."); ev.consume(); return; }
-                if (pass.isEmpty()) { PopupUtil.showError(stage, "Password cannot be empty."); ev.consume(); return; }
-                if (gender == null || gender.isBlank()) { PopupUtil.showError(stage, "Gender cannot be empty."); ev.consume(); return; }
-                if (dpDob.getValue() == null) { PopupUtil.showError(stage, "Date of Birth cannot be empty."); ev.consume(); return; }
-                if (addr.isEmpty()) { PopupUtil.showError(stage, "Address cannot be empty."); ev.consume(); return; }
-                if (area == null || area.isBlank()) { PopupUtil.showError(stage, "Work Area cannot be empty."); ev.consume(); return; }
+                // ✅ FIX: Alerts must be owned by the DIALOG, not the stage (main window)
+                Stage dlgStage = (Stage) dlg.getDialogPane().getScene().getWindow();
+
+                if (name.isEmpty()) {
+                    PopupUtil.showError(dlgStage, "Username cannot be empty.");
+                    ev.consume();
+                    return;
+                }
+                if (pass.isEmpty()) {
+                    PopupUtil.showError(dlgStage, "Password cannot be empty.");
+                    ev.consume();
+                    return;
+                }
+                if (gender == null || gender.isBlank()) {
+                    PopupUtil.showError(dlgStage, "Gender cannot be empty.");
+                    ev.consume();
+                    return;
+                }
+                if (dpDob.getValue() == null) {
+                    PopupUtil.showError(dlgStage, "Date of Birth cannot be empty.");
+                    ev.consume();
+                    return;
+                }
+                if (addr.isEmpty()) {
+                    PopupUtil.showError(dlgStage, "Address cannot be empty.");
+                    ev.consume();
+                    return;
+                }
+                if (area == null || area.isBlank()) {
+                    PopupUtil.showError(dlgStage, "Work Area cannot be empty.");
+                    ev.consume();
+                    return;
+                }
 
                 java.time.LocalDate dob = dpDob.getValue();
                 java.time.LocalDate today = java.time.LocalDate.now();
-                if (dob.isAfter(today)) { PopupUtil.showError(stage, "DOB cannot be in the future."); ev.consume(); return; }
+                if (dob.isAfter(today)) {
+                    PopupUtil.showError(dlgStage, "DOB cannot be in the future.");
+                    ev.consume();
+                    return;
+                }
 
                 int years = java.time.Period.between(dob, today).getYears();
                 if (years < 10 || years > 120) {
-                    PopupUtil.showError(stage, "Please enter a realistic DOB (age 10 to 120).");
+                    PopupUtil.showError(dlgStage, "Please enter a realistic DOB (age 10 to 120).");
                     ev.consume();
                     return;
                 }
 
                 if (!PasswordUtil.isStrongEnough(pass)) {
-                    PopupUtil.showError(stage, "Password too weak. Use 8+ characters with at least 1 letter and 1 number.");
+                    PopupUtil.showError(dlgStage,
+                            "Password too weak. Use 8+ characters with at least 1 letter and 1 number.");
                     ev.consume();
                     return;
                 }
 
                 boolean ok = employeeDAO.createEmployee(name, pass, gender, addr, area, dob.toString());
                 if (!ok) {
-                    PopupUtil.showError(stage, "Failed to create employee. Check console for details.");
+                    PopupUtil.showError(dlgStage, "Failed to create employee. Check console for details.");
                     ev.consume();
                     return;
                 }
@@ -407,9 +449,15 @@ public class AdminTabs {
                 return;
             }
             if (confirm(stage, "Delete Employee", "Are you sure you want to delete " + selected.getUserName() + "?")) {
-                employeeDAO.deleteEmployee(selected.getUserId());
-                empTable.setItems(FXCollections.observableArrayList(employeeDAO.listAll()));
-                fireRefresh(onDataChanged);
+                boolean deleted = employeeDAO.deleteEmployee(selected.getUserId());
+                if (deleted) {
+                    empTable.setItems(FXCollections.observableArrayList(employeeDAO.listAll()));
+                    fireRefresh(onDataChanged);
+                    PopupUtil.showInfo(stage, "Employee deleted successfully.");
+                } else {
+                    // ✅ FIX: Show error popup if delete fails (e.g. assigned to order)
+                    PopupUtil.showError(stage, "Cannot delete user as they are assigned to an order.");
+                }
             }
         });
 
@@ -434,26 +482,22 @@ public class AdminTabs {
     private static void installIntFilter(TextField tf) {
         tf.setTextFormatter(new TextFormatter<>(change -> {
             String next = change.getControlNewText();
-            if (next.isEmpty() || next.matches("\\d*")) return change;
+            if (next.isEmpty() || next.matches("\\d*"))
+                return change;
             return null;
         }));
     }
 
     private static void fireRefresh(Runnable onDataChanged) {
-        if (onDataChanged == null) return;
+        if (onDataChanged == null)
+            return;
 
         Platform.runLater(() -> Platform.runLater(onDataChanged));
     }
 
     private static boolean confirm(Stage owner, String title, String msg) {
-        Alert a = new Alert(Alert.AlertType.CONFIRMATION, msg, ButtonType.YES, ButtonType.NO);
-        a.setHeaderText(title);
-
-        // ✅ force confirmation popup to stay on same screen
-        a.initOwner(owner);
-        a.showAndWait();
-
-        return a.getResult() == ButtonType.YES;
+        // ✅ Use PopupUtil.confirm for consistent ownership and modality behavior
+        return PopupUtil.confirm(owner, title, msg);
     }
 
     private static void showError(Stage owner, String msg) {

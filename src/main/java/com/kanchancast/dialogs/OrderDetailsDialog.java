@@ -32,7 +32,8 @@ public class OrderDetailsDialog {
     private static final String[] WORK_AREAS = StageEnum.labels();
 
     public static void show(Window owner, OrderDAO orderDAO, EmployeeDAO employeeDAO, OrderSummary order) {
-        if (order == null) return;
+        if (order == null)
+            return;
 
         Stage dlg = new Stage();
         if (owner != null) {
@@ -84,7 +85,8 @@ public class OrderDetailsDialog {
                 }
             });
 
-            // Pre-fill existing assignment (if the assigned employee is in this filtered list)
+            // Pre-fill existing assignment (if the assigned employee is in this filtered
+            // list)
             Integer assignedId = existingAssignments.get(area);
             if (assignedId != null) {
                 filtered.stream()
@@ -108,21 +110,21 @@ public class OrderDetailsDialog {
         // --- Buttons ---
         Button btnSave = new Button("💾 Save Assignments");
         btnSave.setStyle("""
-            -fx-background-color: #0078D7;
-            -fx-text-fill: white;
-            -fx-font-weight: bold;
-            -fx-background-radius: 8;
-            -fx-padding: 6 14;
-        """);
+                    -fx-background-color: #0078D7;
+                    -fx-text-fill: white;
+                    -fx-font-weight: bold;
+                    -fx-background-radius: 8;
+                    -fx-padding: 6 14;
+                """);
 
         Button btnCancel = new Button("Cancel");
         btnCancel.setStyle("""
-            -fx-background-color: #e0e0e0;
-            -fx-text-fill: #333;
-            -fx-font-weight: bold;
-            -fx-background-radius: 8;
-            -fx-padding: 6 14;
-        """);
+                    -fx-background-color: #e0e0e0;
+                    -fx-text-fill: #333;
+                    -fx-font-weight: bold;
+                    -fx-background-radius: 8;
+                    -fx-padding: 6 14;
+                """);
         btnCancel.setOnAction(e -> dlg.close());
 
         btnSave.setOnAction(e -> {
@@ -135,15 +137,21 @@ public class OrderDetailsDialog {
                 // If user selected an employee, save it
                 if (emp != null) {
                     boolean ok = orderDAO.assignEmployeeToStage(order.getOrderId(), area, emp.getUserId());
-                    if (ok) anyAssigned = true;
+                    if (ok)
+                        anyAssigned = true;
                 }
             }
 
             if (anyAssigned) {
-                new Alert(Alert.AlertType.INFORMATION, "✅ Employee assignments saved successfully!").showAndWait();
+                Alert a = new Alert(Alert.AlertType.INFORMATION, "✅ Employee assignments saved successfully!");
+                a.initOwner(dlg); // ✅ Fix: Attached to dialog
+                a.showAndWait();
                 dlg.close();
             } else {
-                new Alert(Alert.AlertType.WARNING, "⚠️ No employees were assigned. Please select before saving.").showAndWait();
+                Alert a = new Alert(Alert.AlertType.WARNING,
+                        "⚠️ No employees were assigned. Please select before saving.");
+                a.initOwner(dlg); // ✅ Fix: Attached to dialog
+                a.showAndWait();
             }
         });
 
@@ -167,10 +175,10 @@ public class OrderDetailsDialog {
         root.setBottom(footer);
 
         root.setStyle("""
-            -fx-background-color: linear-gradient(to bottom right, #fafafa, #f1f1f1);
-            -fx-font-family: 'Segoe UI', sans-serif;
-            -fx-font-size: 13px;
-        """);
+                    -fx-background-color: linear-gradient(to bottom right, #fafafa, #f1f1f1);
+                    -fx-font-family: 'Segoe UI', sans-serif;
+                    -fx-font-size: 13px;
+                """);
 
         Scene scene = new Scene(root, 560, 600);
         dlg.setScene(scene);

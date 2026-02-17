@@ -40,7 +40,8 @@ public class ProductFormDialog extends Dialog<Boolean> {
 
         ProductDAO dao = new ProductDAO();
         List<String> categories = dao.listAllCategories();
-        if (categories.isEmpty()) categories.addAll(List.of("ring", "necklace", "bracelet", "earrings", "other"));
+        if (categories.isEmpty())
+            categories.addAll(List.of("ring", "necklace", "bracelet", "earrings", "other"));
         category.getItems().addAll(categories);
         category.setValue(categories.get(0));
 
@@ -67,11 +68,11 @@ public class ProductFormDialog extends Dialog<Boolean> {
             FileChooser fc = new FileChooser();
             fc.setTitle("Choose Product Image");
             fc.getExtensionFilters().addAll(
-                    new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif")
-            );
+                    new FileChooser.ExtensionFilter("Image Files", "*.png", "*.jpg", "*.jpeg", "*.gif"));
 
             File chosen = fc.showOpenDialog(owner);
-            if (chosen == null) return;
+            if (chosen == null)
+                return;
 
             try {
                 Path destDir = ImageUtil.appImagesDir();
@@ -88,7 +89,8 @@ public class ProductFormDialog extends Dialog<Boolean> {
                 preview.setImage(newPrev.getImage());
 
             } catch (Exception ex) {
-                new Alert(Alert.AlertType.ERROR, "Could not save image: " + ex.getMessage(), ButtonType.OK).showAndWait();
+                new Alert(Alert.AlertType.ERROR, "Could not save image: " + ex.getMessage(), ButtonType.OK)
+                        .showAndWait();
             }
         });
 
@@ -100,19 +102,29 @@ public class ProductFormDialog extends Dialog<Boolean> {
         gp.setPadding(new Insets(10));
 
         int r = 0;
-        gp.add(new Label("Name"), 0, r); gp.add(name, 1, r++);
-        gp.add(new Label("Category"), 0, r); gp.add(category, 1, r++);
-        gp.add(new Label("Price"), 0, r); gp.add(price, 1, r++);
-        gp.add(new Label("Gold Weight"), 0, r); gp.add(goldW, 1, r++);
-        gp.add(new Label("Diamond Weight"), 0, r); gp.add(diamondW, 1, r++);
-        gp.add(new Label("Stone Weight"), 0, r); gp.add(stoneW, 1, r++);
+        gp.add(new Label("Name"), 0, r);
+        gp.add(name, 1, r++);
+        gp.add(new Label("Category"), 0, r);
+        gp.add(category, 1, r++);
+        gp.add(new Label("Price"), 0, r);
+        gp.add(price, 1, r++);
+        gp.add(new Label("Gold Weight"), 0, r);
+        gp.add(goldW, 1, r++);
+        gp.add(new Label("Diamond Weight"), 0, r);
+        gp.add(diamondW, 1, r++);
+        gp.add(new Label("Stone Weight"), 0, r);
+        gp.add(stoneW, 1, r++);
 
         HBox durRow = new HBox(10, durationAmount, durationUnit);
-        gp.add(new Label("Duration"), 0, r); gp.add(durRow, 1, r++);
+        gp.add(new Label("Duration"), 0, r);
+        gp.add(durRow, 1, r++);
 
-        gp.add(new Label("Image"), 0, r); gp.add(imageRow, 1, r++);
-        gp.add(new Label("Preview"), 0, r); gp.add(preview, 1, r++);
-        gp.add(new Label("Description"), 0, r); gp.add(description, 1, r++);
+        gp.add(new Label("Image"), 0, r);
+        gp.add(imageRow, 1, r++);
+        gp.add(new Label("Preview"), 0, r);
+        gp.add(preview, 1, r++);
+        gp.add(new Label("Description"), 0, r);
+        gp.add(description, 1, r++);
 
         getDialogPane().setContent(gp);
 
@@ -135,28 +147,80 @@ public class ProductFormDialog extends Dialog<Boolean> {
                 String durAmtRaw = durationAmount.getText().trim();
                 String durUnitRaw = durationUnit.getValue();
 
-                if (n.isEmpty()) { showError("Product name cannot be empty."); ev.consume(); return; }
-                if (t == null || t.isBlank()) { showError("Category cannot be empty."); ev.consume(); return; }
-                if (priceRaw.isEmpty()) { showError("Price cannot be empty."); ev.consume(); return; }
-                if (gwRaw.isEmpty()) { showError("Gold weight cannot be empty."); ev.consume(); return; }
-                if (dwRaw.isEmpty()) { showError("Diamond weight cannot be empty."); ev.consume(); return; }
-                if (swRaw.isEmpty()) { showError("Stone weight cannot be empty."); ev.consume(); return; }
+                if (n.isEmpty()) {
+                    showError("Product name cannot be empty.");
+                    ev.consume();
+                    return;
+                }
+                if (t == null || t.isBlank()) {
+                    showError("Category cannot be empty.");
+                    ev.consume();
+                    return;
+                }
+                if (priceRaw.isEmpty()) {
+                    showError("Price cannot be empty.");
+                    ev.consume();
+                    return;
+                }
+                if (gwRaw.isEmpty()) {
+                    showError("Gold weight cannot be empty.");
+                    ev.consume();
+                    return;
+                }
+                if (dwRaw.isEmpty()) {
+                    showError("Diamond weight cannot be empty.");
+                    ev.consume();
+                    return;
+                }
+                if (swRaw.isEmpty()) {
+                    showError("Stone weight cannot be empty.");
+                    ev.consume();
+                    return;
+                }
 
-                if (durAmtRaw.isEmpty()) { showError("Duration amount cannot be empty."); ev.consume(); return; }
+                if (durAmtRaw.isEmpty()) {
+                    showError("Duration amount cannot be empty.");
+                    ev.consume();
+                    return;
+                }
                 int durAmt = Integer.parseInt(durAmtRaw);
-                if (durAmt <= 0) { showError("Duration must be at least 1."); ev.consume(); return; }
-                if (durUnitRaw == null || durUnitRaw.isBlank()) { showError("Duration unit cannot be empty."); ev.consume(); return; }
+                if (durAmt <= 0) {
+                    showError("Duration must be at least 1.");
+                    ev.consume();
+                    return;
+                }
+                if (durUnitRaw == null || durUnitRaw.isBlank()) {
+                    showError("Duration unit cannot be empty.");
+                    ev.consume();
+                    return;
+                }
 
-                if (img.isEmpty()) { showError("Please choose an image using Browse…"); ev.consume(); return; }
-                if (desc.isEmpty()) { showError("Description cannot be empty."); ev.consume(); return; }
+                if (img.isEmpty()) {
+                    showError("Please choose an image using Browse…");
+                    ev.consume();
+                    return;
+                }
+                if (desc.isEmpty()) {
+                    showError("Description cannot be empty.");
+                    ev.consume();
+                    return;
+                }
 
                 double p = Double.parseDouble(priceRaw);
                 double gw = Double.parseDouble(gwRaw);
                 double dw = Double.parseDouble(dwRaw);
                 double sw = Double.parseDouble(swRaw);
 
-                if (p < 0) { showError("Price cannot be negative."); ev.consume(); return; }
-                if (gw < 0 || dw < 0 || sw < 0) { showError("Weights cannot be negative."); ev.consume(); return; }
+                if (p < 0) {
+                    showError("Price cannot be negative.");
+                    ev.consume();
+                    return;
+                }
+                if (gw < 0 || dw < 0 || sw < 0) {
+                    showError("Weights cannot be negative.");
+                    ev.consume();
+                    return;
+                }
 
                 String dbUnit = switch (durUnitRaw.toLowerCase()) {
                     case "weeks" -> "WEEKS";
@@ -185,15 +249,18 @@ public class ProductFormDialog extends Dialog<Boolean> {
 
     private String getExt(String filename) {
         int dot = filename.lastIndexOf('.');
-        if (dot < 0) return "";
+        if (dot < 0)
+            return "";
         return filename.substring(dot).toLowerCase();
     }
 
     private void installDecimalFilter(TextField tf) {
         UnaryOperator<TextFormatter.Change> filter = change -> {
             String next = change.getControlNewText();
-            if (next.isEmpty()) return change;
-            if (next.matches("\\d*(\\.\\d*)?")) return change;
+            if (next.isEmpty())
+                return change;
+            if (next.matches("\\d*(\\.\\d*)?"))
+                return change;
             return null;
         };
         tf.setTextFormatter(new TextFormatter<>(filter));
@@ -202,15 +269,19 @@ public class ProductFormDialog extends Dialog<Boolean> {
     private void installIntegerFilter(TextField tf) {
         UnaryOperator<TextFormatter.Change> filter = change -> {
             String next = change.getControlNewText();
-            if (next.isEmpty()) return change;
-            if (next.matches("\\d*")) return change;
+            if (next.isEmpty())
+                return change;
+            if (next.matches("\\d*"))
+                return change;
             return null;
         };
         tf.setTextFormatter(new TextFormatter<>(filter));
     }
 
     private void showError(String msg) {
-        new Alert(Alert.AlertType.ERROR, msg, ButtonType.OK).showAndWait();
+        Alert a = new Alert(Alert.AlertType.ERROR, msg, ButtonType.OK);
+        a.initOwner(getDialogPane().getScene().getWindow()); // ✅ Fix: Attached to dialog
+        a.showAndWait();
     }
 
     public static void show(Stage owner) {

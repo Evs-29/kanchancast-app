@@ -13,17 +13,20 @@ import javafx.scene.layout.*;
 import javafx.scene.text.Font;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
+import javafx.stage.Window;
 
 import java.util.Optional;
 
 /**
  * Admin popup to view employee details and RESET password.
- * Note: hashed passwords cannot be reversed, so we never "show" the original password.
+ * Note: hashed passwords cannot be reversed, so we never "show" the original
+ * password.
  */
 public class EmployeeDetailsDialog {
 
     public static void show(Stage owner, EmployeeDAO employeeDAO, StaffRow row) {
-        if (owner == null || employeeDAO == null || row == null) return;
+        if (owner == null || employeeDAO == null || row == null)
+            return;
 
         Optional<User> opt = employeeDAO.findEmployeeById(row.getUserId());
         User u = opt.orElseGet(() -> fallbackUser(row));
@@ -70,8 +73,7 @@ public class EmployeeDetailsDialog {
         pwMasked.setStyle("-fx-text-fill: #222222;");
         Label pwNote = new Label(
                 "Passwords are stored securely (hashed). The original password cannot be displayed.\n" +
-                        "Use Reset Password to set a new one."
-        );
+                        "Use Reset Password to set a new one.");
         pwNote.setWrapText(true);
         pwNote.setStyle("-fx-text-fill: #666666; -fx-font-size: 11px;");
 
@@ -82,20 +84,20 @@ public class EmployeeDetailsDialog {
         VBox pwBox = new VBox(8, pwTitle, pwMasked, pwNote, resetBtn);
         pwBox.setPadding(new Insets(12));
         pwBox.setStyle("""
-            -fx-background-color: #fafafa;
-            -fx-background-radius: 12;
-            -fx-border-radius: 12;
-            -fx-border-color: #e7e7e7;
-        """);
+                    -fx-background-color: #fafafa;
+                    -fx-background-radius: 12;
+                    -fx-border-radius: 12;
+                    -fx-border-color: #e7e7e7;
+                """);
 
         Button closeBtn = new Button("Close");
         closeBtn.setDefaultButton(true);
         closeBtn.setStyle("""
-            -fx-background-color: #b83b5e;
-            -fx-text-fill: white;
-            -fx-font-weight: bold;
-            -fx-cursor: hand;
-        """);
+                    -fx-background-color: #b83b5e;
+                    -fx-text-fill: white;
+                    -fx-font-weight: bold;
+                    -fx-cursor: hand;
+                """);
         closeBtn.setOnAction(e -> dlg.close());
 
         HBox footer = new HBox(closeBtn);
@@ -104,9 +106,9 @@ public class EmployeeDetailsDialog {
         VBox root = new VBox(14, header, new Separator(), grid, pwBox, footer);
         root.setPadding(new Insets(18));
         root.setStyle("""
-            -fx-background-color: linear-gradient(to bottom right, #fdfbfb, #ebedee);
-            -fx-font-family: 'Segoe UI';
-        """);
+                    -fx-background-color: linear-gradient(to bottom right, #fdfbfb, #ebedee);
+                    -fx-font-family: 'Segoe UI';
+                """);
 
         dlg.setScene(new Scene(root, 640, 560));
         dlg.showAndWait();
@@ -142,24 +144,25 @@ public class EmployeeDetailsDialog {
             String b = p2.getText();
 
             if (a == null || a.isBlank() || b == null || b.isBlank()) {
-                showError("Password fields cannot be empty.");
+                showError(d.getDialogPane().getScene().getWindow(), "Password fields cannot be empty.");
                 ev.consume();
                 return;
             }
             if (!a.equals(b)) {
-                showError("Passwords do not match.");
+                showError(d.getDialogPane().getScene().getWindow(), "Passwords do not match.");
                 ev.consume();
                 return;
             }
             if (!PasswordUtil.isStrongEnough(a)) {
-                showError("Password too weak. Use 8+ characters with at least 1 letter and 1 number.");
+                showError(d.getDialogPane().getScene().getWindow(),
+                        "Password too weak. Use 8+ characters with at least 1 letter and 1 number.");
                 ev.consume();
                 return;
             }
 
             boolean ok = dao.updateEmployeePassword(u.getUserId(), a);
             if (!ok) {
-                showError("Failed to reset password (check console).");
+                showError(d.getDialogPane().getScene().getWindow(), "Failed to reset password (check console).");
                 ev.consume();
             }
         });
@@ -191,12 +194,18 @@ public class EmployeeDetailsDialog {
     }
 
     private static String safe(String s, String fallback) {
-        if (s == null) return fallback;
+        if (s == null)
+            return fallback;
         String t = s.trim();
         return t.isEmpty() ? fallback : t;
     }
 
-    private static void showError(String msg) {
-        new Alert(Alert.AlertType.ERROR, msg, ButtonType.OK).showAndWait();
+    private static void showError(Window owner, String msg) {
+        Alert a = new Alert(Alert.AlertType.ERROR, msg, ButtonType.OK);
+        if (owner != null) {
+            a.initOwner(owner);
+            a.initModality(Modality.WINDOW_MODAL);
+        }
+        a.showAndWait();
     }
 }
